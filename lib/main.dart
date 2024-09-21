@@ -8,6 +8,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:stibu/appwrite.models.dart';
 import 'package:stibu/feature/app_state/account.dart';
 import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
@@ -34,11 +35,11 @@ Future<void> main(List<String> args) async {
 
   GetIt.I.registerSingleton<AppRouter>(AppRouter());
   GetIt.I.registerLazySingleton<AppwriteClient>(() => AppwriteClient(
-    Client()
-        .setEndpoint('https://appwrite.vee.icu/v1')
-        .setProject('66ba8a48000da48dd442')
-        .setEndPointRealtime('wss://appwrite.vee.icu/v1/realtime'),
-  ));
+        Client()
+            .setEndpoint('https://appwrite.vee.icu/v1')
+            .setProject('66ba8a48000da48dd442')
+            .setEndPointRealtime('wss://appwrite.vee.icu/v1/realtime'),
+      ));
   GetIt.I.registerLazySingleton<Authentication>(() => Authentication());
   GetIt.I.registerLazySingleton<RealtimeSubscriptions>(
       () => RealtimeSubscriptions());
@@ -55,7 +56,29 @@ Future<void> main(List<String> args) async {
     });
   }
 
-  runApp(const StibuApp());
+  FlutterError.onError = (details) {
+    log.severe(details.exceptionAsString(), details.exception);
+    Sentry.captureException(details.exception, stackTrace: details.stack);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    log.severe(error, stack);
+    Sentry.captureException(error, stackTrace: stack);
+
+    return false;
+  };
+
+  SentryFlutter.init((options) {
+    options.dsn =
+        'https://3bedffb25aaa47afb2daca40cfec9fbb@glitchtip.vee.icu/1'; // if hard coding GlitchTip DSN
+    // Set tracesSampleRate to 1.0 to capture 100% of transactions for tracing.
+    // We recommend adjusting this value in production.
+    options.tracesSampleRate = 1.0;
+    // The sampling rate for profiling is relative to tracesSampleRate
+    // Setting to 1.0 will profile 100% of sampled transactions:
+    // Note: Profiling alpha is available for iOS and macOS since SDK version 7.12.0
+    options.profilesSampleRate = 1.0;
+  }, appRunner: () => runApp(const StibuApp()));
 }
 
 class StibuApp extends StatefulWidget {

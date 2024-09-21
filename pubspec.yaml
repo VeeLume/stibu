@@ -39,6 +39,7 @@ dependencies:
   sanitize_filename: ^1.0.5
   dart_helper_utils: ^2.7.0
   flutter_helper_utils: ^6.6.0
+  sentry_flutter: ^8.9.0
 
 
 dev_dependencies:

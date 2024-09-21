@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 @RoutePage()
 class DashboardPage extends StatefulWidget {
@@ -12,8 +12,20 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text("Dashboard"),
+    return ScaffoldPage(
+      content: Column(
+        children: [
+          const Center(
+            child: Text("Dashboard"),
+          ),
+          Button(
+            child: const Text('Crash App'),
+            onPressed: () {
+              throw Exception('Crash App');
+            },
+          )
+        ],
+      ),
     );
   }
 }
