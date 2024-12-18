@@ -186,6 +186,18 @@ Future<Document> generateBasicInvoiceWithOrder(Invoices invoice) async {
                   fontSize: 8,
                 ),
           ),
+          Text(
+            'Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum.',
+            style: Theme.of(context).paragraphStyle.copyWith(
+                  fontSize: 8,
+                ),
+          ),
+          Text(
+            'Postbank Berlin, IBAN: DE12 1234 567 890, BIC: PBNKDEFF',
+            style: Theme.of(context).paragraphStyle.copyWith(
+                  fontSize: 8,
+                ),
+          ),
           Padding(padding: const EdgeInsets.symmetric(vertical: 10)),
           Text('Vielen Dank für dein Vertrauen'),
           Spacer(flex: 5),
