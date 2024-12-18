@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -78,7 +77,7 @@ NavigationAppBar buildNavigationAppBar(BuildContext context) {
             ],
           )
         : null,
-    automaticallyImplyLeading: true,
-    leading: const AutoLeadingButton(),
+    automaticallyImplyLeading: false,
+    // leading: const AutoLeadingButton(),
   );
 }

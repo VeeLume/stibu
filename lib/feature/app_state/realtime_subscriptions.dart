@@ -4,7 +4,7 @@ import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import 'package:result_type/result_type.dart';
 import 'package:stibu/appwrite.models.dart';
-import 'package:stibu/feature/app_state/account.dart';
+import 'package:stibu/feature/app_state/auth_provider.dart';
 import 'package:stibu/feature/app_state/realtime_listener.dart';
 import 'package:stibu/main.dart';
 
@@ -147,12 +147,22 @@ class RealtimeSubscriptions {
     final appwrite = getIt<AppwriteClient>();
     _realtimeListener = RealtimeListener(appwrite.realtime);
 
-    getIt<Authentication>().isAuthenticated.listen((isAuthenticated) async {
-      if (isAuthenticated) {
+    final authProvider = getIt<AuthProvider>();
+
+    authProvider.addListener(() {
+      if (authProvider.isAuthenticated) {
         _realtimeListener.addSubscriptions(_realtimeListeners);
       } else {
         _realtimeListener.removeSubscriptions(_realtimeListeners.keys.toList());
       }
     });
+
+    // getIt<AuthProvider>().isAuthenticated.listen((isAuthenticated) async {
+    //   if (isAuthenticated) {
+    //     _realtimeListener.addSubscriptions(_realtimeListeners);
+    //   } else {
+    //     _realtimeListener.removeSubscriptions(_realtimeListeners.keys.toList());
+    //   }
+    // });
   }
 }
