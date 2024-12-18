@@ -6,14 +6,15 @@ import 'package:intl/intl.dart';
 import 'package:stibu/common/currency.dart';
 import 'package:stibu/common/models_extensions.dart';
 import 'package:stibu/feature/revenue_and_expenses/overview.dart';
+import 'package:stibu/feature/router/router.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 
 @RoutePage()
 class OverviewMonthPage extends StatelessWidget {
   const OverviewMonthPage({
     super.key,
-    @PathParam('year') required this.year,
-    @PathParam('month') required this.month,
+    required this.year,
+    required this.month,
     required this.group,
   });
 
@@ -34,6 +35,15 @@ class OverviewMonthPage extends StatelessWidget {
           cells: [
             DataCell(
               Text(i < invoices.length ? invoices[i].invoiceNumber : ''),
+              onTap: i < invoices.length
+                  ? () async => context.navigateTo(
+                        InvoiceTap(
+                          children: [
+                            InvoiceDetailRoute(id: invoices[i].$id),
+                          ],
+                        ),
+                      )
+                  : null,
             ),
             DataCell(Text(i < invoices.length ? invoices[i].name : '')),
             DataCell(

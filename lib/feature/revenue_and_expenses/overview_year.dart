@@ -37,7 +37,7 @@ Map<int, ExpensesAndRevenueGroup> splitByMonth(ExpensesAndRevenueGroup group) {
 class OverviewYearPage extends StatelessWidget {
   OverviewYearPage({
     super.key,
-    @PathParam('year') required this.year,
+    required this.year,
     required ExpensesAndRevenueGroup group,
   }) : groups = splitByMonth(group);
 

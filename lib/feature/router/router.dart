@@ -43,6 +43,10 @@ class NoTransitionRoute extends CustomRoute {
 const CustomerTab = EmptyShellRoute('CustomerTab');
 // ignore: constant_identifier_names
 const RevenueAndExpensesTab = EmptyShellRoute('RevenueAndExpensesTab');
+// ignore: constant_identifier_names
+const InvoiceTap = EmptyShellRoute('InvoiceTab');
+// ignore: constant_identifier_names
+const ExpenseTab = EmptyShellRoute('ExpenseTab');
 
 @AutoRouterConfig(replaceInRouteName: 'Page,Route')
 class AppRouter extends RootStackRouter {
@@ -85,7 +89,17 @@ class AppRouter extends RootStackRouter {
             ),
             NoTransitionRoute(
               path: 'invoices',
-              page: InvoiceListRoute.page,
+              page: InvoiceTap,
+              children: [
+                NoTransitionRoute(
+                  path: '',
+                  page: InvoiceListRoute.page,
+                ),
+                NoTransitionRoute(
+                  path: ':id',
+                  page: InvoiceDetailRoute.page,
+                ),
+              ],
             ),
             NoTransitionRoute(
               page: ExpensesListRoute.page,
@@ -103,7 +117,6 @@ class AppRouter extends RootStackRouter {
                 ),
                 NoTransitionRoute(
                   page: OverviewYearRoute.page,
-                  path: ':year',
                 ),
                 NoTransitionRoute(
                   page: OverviewMonthRoute.page,

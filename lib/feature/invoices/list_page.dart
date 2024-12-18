@@ -15,6 +15,7 @@ import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/invoices/info_card.dart';
 import 'package:stibu/feature/invoices/input.dart';
 import 'package:stibu/feature/invoices/pdf/common.dart';
+import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
 
 Future<Invoices?> _showInvoiceCreateDialog(BuildContext context) async {
@@ -297,7 +298,12 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                 return InvoiceListEntry(
                   invoice: invoice,
                   selected: selectedIndex == index,
-                  onPressed: () {
+                  onPressed: () async {
+                    if (!largeScreen) {
+                      await context
+                          .navigateTo(InvoiceDetailRoute(id: invoice.$id));
+                      return;
+                    }
                     if (selectedIndex == index) return;
                     setState(() {
                       selectedIndex = index;

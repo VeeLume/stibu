@@ -43,7 +43,6 @@ NavigationAppBar buildNavigationAppBar(BuildContext context) {
   final brightness = FluentTheme.of(context).brightness;
 
   return NavigationAppBar(
-    leading: const AutoLeadingButton(),
     title: defaultTargetPlatform == TargetPlatform.windows
         ? MoveWindow(
             child: SizedBox.expand(
@@ -79,6 +78,7 @@ NavigationAppBar buildNavigationAppBar(BuildContext context) {
             ],
           )
         : null,
-    automaticallyImplyLeading: false,
+    automaticallyImplyLeading: true,
+    leading: const AutoLeadingButton(),
   );
 }
