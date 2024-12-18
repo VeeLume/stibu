@@ -1,10 +1,12 @@
+// ignore_for_file: constant_identifier_names
+
 import 'dart:async';
 
 import 'package:appwrite/appwrite.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:stibu/appwrite.models.dart';
-import 'package:stibu/feature/app_state/account.dart';
+import 'package:stibu/feature/app_state/auth_provider.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
 
@@ -39,13 +41,9 @@ class NoTransitionRoute extends CustomRoute {
         );
 }
 
-// ignore: constant_identifier_names
 const CustomerTab = EmptyShellRoute('CustomerTab');
-// ignore: constant_identifier_names
 const RevenueAndExpensesTab = EmptyShellRoute('RevenueAndExpensesTab');
-// ignore: constant_identifier_names
 const InvoiceTap = EmptyShellRoute('InvoiceTab');
-// ignore: constant_identifier_names
 const ExpenseTab = EmptyShellRoute('ExpenseTab');
 
 @AutoRouterConfig(replaceInRouteName: 'Page,Route')
@@ -102,9 +100,11 @@ class AppRouter extends RootStackRouter {
               ],
             ),
             NoTransitionRoute(
+              path: 'expenses',
               page: ExpensesListRoute.page,
             ),
             NoTransitionRoute(
+              path: 'orders',
               page: OrderListRoute.page,
             ),
             NoTransitionRoute(
@@ -124,6 +124,7 @@ class AppRouter extends RootStackRouter {
               ],
             ),
             NoTransitionRoute(
+              path: 'calendar',
               page: CalendarRoute.page,
             ),
             NoTransitionRoute(
@@ -204,24 +205,30 @@ class AuthGuard extends AutoRouteGuard {
     NavigationResolver resolver,
     StackRouter router,
   ) async {
-    final auth = getIt<Authentication>();
+    final auth = getIt<AuthProvider>();
 
-    log.info('AuthGuard: isAuthenticated=${auth.isAuthenticated.value}');
+    log.info('AuthGuard: isAuthenticated=${auth.isAuthenticated}');
+    log.info('AuthGuard: isReevaluating=${resolver.isReevaluating}');
 
-    if (auth.isAuthenticated.value) {
+    if (auth.isAuthenticated) {
       resolver.next(true);
     } else {
-      late final StreamSubscription sub;
-      sub = auth.isAuthenticated.listen((isAuthenticated) async {
-        if (isAuthenticated) {
-          await sub.cancel();
+      // Guards are not reevaluated while the redirect is still in progress
+      // so we need to to watch for the listenable itself for changes
+
+      late final VoidCallback listener;
+      listener = () {
+        if (auth.isAuthenticated) {
+          auth.removeListener(listener);
           resolver.next(true);
         }
-      });
+      };
+      auth.addListener(listener);
 
       await resolver.redirect(
         AuthenticationRoute(
-          onAuthenticated: () {},
+          onAuthenticated: (didLogin) =>
+              resolver.resolveNext(didLogin, reevaluateNext: false),
         ),
       );
     }

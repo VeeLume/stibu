@@ -1,13 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:stibu/common/show_result_info.dart';
-import 'package:stibu/feature/app_state/account.dart';
+import 'package:stibu/feature/app_state/auth_provider.dart';
 import 'package:stibu/feature/navigation/windows_appbar.dart';
 import 'package:stibu/main.dart';
 
 @RoutePage()
 class AuthenticationPage extends StatefulWidget {
-  final VoidCallback onAuthenticated;
+  final void Function(bool) onAuthenticated;
 
   const AuthenticationPage({
     super.key,
@@ -91,7 +91,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
 }
 
 class CreateAccountTab extends StatefulWidget {
-  final VoidCallback onAuthenticated;
+  final void Function(bool) onAuthenticated;
 
   const CreateAccountTab({super.key, required this.onAuthenticated});
 
@@ -110,17 +110,17 @@ class _CreateAccountTabState extends State<CreateAccountTab> {
       formKey.currentState!.save();
 
       final result =
-          await getIt<Authentication>().createAccount(email!, password!, name!);
+          await getIt<AuthProvider>().createAccount(email!, password!, name!);
 
       if (!context.mounted) return;
       await showResultInfo(context, result);
 
       if (result.isSuccess) {
-        final result = await getIt<Authentication>().login(email!, password!);
-
+        final result = await getIt<AuthProvider>().login(email!, password!);
         if (!context.mounted) return;
         await showResultInfo(context, result);
       }
+      widget.onAuthenticated(result.isSuccess);
     }
   }
 
@@ -203,7 +203,7 @@ class _CreateAccountTabState extends State<CreateAccountTab> {
 }
 
 class LoginTab extends StatefulWidget {
-  final VoidCallback onAuthenticated;
+  final void Function(bool) onAuthenticated;
 
   const LoginTab({super.key, required this.onAuthenticated});
 
@@ -220,14 +220,12 @@ class _LoginTabState extends State<LoginTab> {
     if (formKey.currentState!.validate()) {
       formKey.currentState!.save();
 
-      final result = await getIt<Authentication>().login(email!, password!);
+      final result = await getIt<AuthProvider>().login(email!, password!);
 
       if (!context.mounted) return;
       await showResultInfo(context, result);
 
-      if (result.isSuccess) {
-        widget.onAuthenticated();
-      }
+      widget.onAuthenticated(result.isSuccess);
     }
   }
 

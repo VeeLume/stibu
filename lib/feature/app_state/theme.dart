@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:stibu/appwrite.models.dart';
-import 'package:stibu/feature/app_state/account.dart';
+import 'package:stibu/feature/app_state/auth_provider.dart';
 import 'package:stibu/main.dart';
 import 'package:system_theme/system_theme.dart';
 
@@ -55,16 +55,26 @@ class ThemeProvider with ChangeNotifier {
   ThemeProvider() {
     final appwrite = getIt<AppwriteClient>();
 
-    getIt<Authentication>().isAuthenticated.listen((isAuthenticated) async {
-      if (isAuthenticated) {
-        final preferences = await appwrite.account.getPrefs();
-        if (preferences.data.containsKey('themeMode')) {
-          _themeMode = ThemeMode.values[preferences.data['themeMode']];
-        }
-        if (preferences.data.containsKey('accentColor')) {
-          _accentColor = Color(preferences.data['accentColor']).toAccentColor();
-        }
+    getIt<AuthProvider>().addListener(() async {
+      final preferences = await appwrite.account.getPrefs();
+      if (preferences.data.containsKey('themeMode')) {
+        _themeMode = ThemeMode.values[preferences.data['themeMode']];
+      }
+      if (preferences.data.containsKey('accentColor')) {
+        _accentColor = Color(preferences.data['accentColor']).toAccentColor();
       }
     });
+
+    // getIt<Authentication>().isAuthenticated.listen((isAuthenticated) async {
+    //   if (isAuthenticated) {
+    //     final preferences = await appwrite.account.getPrefs();
+    //     if (preferences.data.containsKey('themeMode')) {
+    //       _themeMode = ThemeMode.values[preferences.data['themeMode']];
+    //     }
+    //     if (preferences.data.containsKey('accentColor')) {
+    //       _accentColor = Color(preferences.data['accentColor']).toAccentColor();
+    //     }
+    //   }
+    // });
   }
 }

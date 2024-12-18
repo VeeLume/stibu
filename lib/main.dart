@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:appwrite/appwrite.dart';
-import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -9,7 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:stibu/appwrite.models.dart';
-import 'package:stibu/feature/app_state/account.dart';
+import 'package:stibu/feature/app_state/auth_provider.dart';
 import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/app_state/theme.dart';
 import 'package:stibu/feature/router/router.dart';
@@ -40,7 +39,7 @@ Future<void> main(List<String> args) async {
           .setProject('66ba8a48000da48dd442'),
     ),
   );
-  GetIt.I.registerLazySingleton<Authentication>(Authentication.new);
+  GetIt.I.registerLazySingleton<AuthProvider>(AuthProvider.new);
   GetIt.I.registerLazySingleton<RealtimeSubscriptions>(
     RealtimeSubscriptions.new,
   );
@@ -71,12 +70,15 @@ class StibuApp extends StatefulWidget {
 
 class _StibuAppState extends State<StibuApp> {
   final router = getIt<AppRouter>();
-  final auth = getIt<Authentication>();
+  final authProvider = getIt<AuthProvider>();
   final themeProvider = getIt<ThemeProvider>();
 
   @override
   void initState() {
     super.initState();
+    authProvider.addListener(() {
+      log.info('AuthProvider: isAuthenticated=${authProvider.isAuthenticated}');
+    });
   }
 
   @override
@@ -94,8 +96,7 @@ class _StibuAppState extends State<StibuApp> {
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
           routerConfig: router.config(
-            reevaluateListenable:
-                ReevaluateListenable.stream(auth.isAuthenticated),
+            reevaluateListenable: authProvider,
             navigatorObservers: () => [RouteLogger()],
           ),
           localizationsDelegates: Lang.localizationsDelegates,
