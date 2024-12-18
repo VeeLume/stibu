@@ -49,7 +49,15 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   auto_route_generator: ^9.0.0
   build_runner: ^2.4.11
+  msix: ^3.16.8
 
 flutter:
   uses-material-design: true
   generate: true
+
+msix_config:
+  display_name: Stibu
+  capabilities: internetClient
+  install_certificate: false
+  certificate_path: ./CERTIFICATE.pfx
+  logo_path: ./logo.png

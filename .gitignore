@@ -55,3 +55,4 @@ app.*.map.json
 appwrite.json
 appwrite.dev.json
 appwrite.prod.json
+.env*
