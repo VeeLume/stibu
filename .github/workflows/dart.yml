@@ -1,7 +1,0 @@
-name: Build Flutter App (APK/AAB/EXE)
-
-on:
-  workflow_dispatch:
-
-jobs:
-  
