@@ -108,6 +108,10 @@ class AppRouter extends RootStackRouter {
               page: OrderListRoute.page,
             ),
             NoTransitionRoute(
+              path: 'products',
+              page: ProductListRoute.page,
+            ),
+            NoTransitionRoute(
               page: RevenueAndExpensesTab,
               path: 'revenue-and-expenses',
               children: [
