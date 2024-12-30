@@ -68,6 +68,11 @@ var items = <Object>[
     route: RevenueAndExpensesTab(),
   ),
   const RouteDestination(
+    title: 'Products',
+    icon: FluentIcons.product,
+    route: ProductListRoute(),
+  ),
+  const RouteDestination(
     title: 'Calendar',
     icon: FluentIcons.calendar,
     route: CalendarRoute(),
