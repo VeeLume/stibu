@@ -9,6 +9,7 @@
 .history
 .svn/
 migrate_working_dir/
+**.pfx
 
 # IntelliJ related
 *.iml
@@ -38,6 +39,7 @@ migrate_working_dir/
 /lib/l10n/generated/**
 /windows/flutter/generated*
 /lib/appwrite.models.dart
+l10n_errors.txt
 
 # Symbolication related
 app.*.symbols
