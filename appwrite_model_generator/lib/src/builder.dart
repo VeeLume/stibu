@@ -49,7 +49,7 @@ class ModelBuilder implements Builder {
         Directive.import('package:dart_helper_utils/dart_helper_utils.dart'),
         Directive.import('package:collection/collection.dart'),
         Directive.import('package:result_type/result_type.dart'),
-        Directive.import('package:appwrite/models.dart'),
+        Directive.import('package:appwrite/models.dart', hide: ["Locale"]),
         Directive.import('package:appwrite/appwrite.dart'),
         Directive.import('package:get_it/get_it.dart'),
       ]);

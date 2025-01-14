@@ -58,6 +58,11 @@ Future<void> main(List<String> args) async {
     getIt<AppwriteClient>().client.setProject('672be8c200098f27fd3a');
   }
 
+  await getIt<AppwriteClient>().locale.get().then((value) {
+    log.info('Appwrite locale: $value');
+    getIt<AppwriteClient>().client.setLocale(value);
+  });
+
   runApp(const StibuApp());
 }
 
@@ -73,10 +78,11 @@ class _StibuAppState extends State<StibuApp> {
   final authProvider = getIt<AuthProvider>();
   final themeProvider = getIt<ThemeProvider>();
 
+
   @override
   void initState() {
     super.initState();
-    authProvider.addListener(() {
+    authProvider.addListener(() async {
       log.info('AuthProvider: isAuthenticated=${authProvider.isAuthenticated}');
     });
   }

@@ -42,6 +42,10 @@ List<Field> getFields() => [
         ..name = 'storage'
         ..modifier = FieldModifier.final$
         ..type = refer('Storage')),
+      Field((b) => b
+        ..name = 'locale'
+        ..modifier = FieldModifier.final$
+        ..type = refer('Locale')),
     ];
 
 List<Constructor> getConstructors() => [
@@ -56,6 +60,7 @@ List<Constructor> getConstructors() => [
           Code('functions = Functions(client)'),
           Code('avatars = Avatars(client)'),
           Code('storage = Storage(client)'),
+          Code('locale = Locale(client)'),
         ])),
     ];
 
