@@ -97,7 +97,7 @@ class OverviewYearPage extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: const Text('Cumulative'),
+              leading: const Text('Total'),
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [

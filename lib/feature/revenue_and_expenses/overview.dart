@@ -234,7 +234,7 @@ class _RevenueAndExpenseOverviewPageState
             ),
             if (_loading) const Center(child: ProgressBar()),
             ListTile(
-              leading: const Text('Cumulative'),
+              leading: const Text('Total'),
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
