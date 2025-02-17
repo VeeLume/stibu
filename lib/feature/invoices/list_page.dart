@@ -17,6 +17,7 @@ import 'package:stibu/feature/invoices/input.dart';
 import 'package:stibu/feature/invoices/pdf/common.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
+import 'package:stibu/widgets/command_bar_dropdown_button.dart';
 
 Future<Invoices?> _showInvoiceCreateDialog(BuildContext context) async {
   final invoice = await showDialog<Invoices>(
@@ -131,6 +132,70 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   StreamSubscription? _subscription;
   final _scrollController = ScrollController();
 
+  final Map<PrintTemplates, MenuFlyoutItemBase> _printTemplates = {};
+
+  Future<void> _loadPrintTemplates() async {
+    late final (int, List<PrintTemplates>) result;
+    result = (await PrintTemplates.page(offset: 0)).success;
+
+    setState(() {
+      for (final template in result.$2) {
+        _printTemplates[template] = MenuFlyoutItem(
+          text: Text(template.name),
+          onPressed: () async {
+            final isOK = await markInvoiceReadOnly();
+            if (!isOK) return;
+
+            final invoice = _invoices[selectedIndex!];
+
+            log.info(
+                'Printing invoice ${invoice.$id} with template ${template.name}');
+          },
+        );
+      }
+
+      if (_printTemplates.isEmpty) {
+        _printTemplates[PrintTemplates(
+          name: 'No templates available',
+          content: 'Invalid template',
+        )] = MenuFlyoutItem(
+          text: const Text('No templates available'),
+          onPressed: null,
+        );
+      }
+
+      // _printTemplates.add(const MenuFlyoutSeparator());
+      // _printTemplates.add(MenuFlyoutItem(
+      //   text: const Text('Manage templates'),
+      //   onPressed: () async {
+      //     await context.navigateTo(PrintTemplatesRoute());
+      //   },
+      // ),);
+    });
+  }
+
+  List<MenuFlyoutItemBase> get filterTemplates {
+    final invoice = _invoices[selectedIndex!];
+
+    if (invoice.order == null) {
+      return _printTemplates.entries
+          .where(
+            (e) => e.key.type?.contains(PrintTemplatesType.Invoice) ?? false,
+          )
+          .map((e) => e.value)
+          .toList();
+    }
+
+    return _printTemplates.entries
+        .where(
+          (e) =>
+              e.key.type?.contains(PrintTemplatesType.InvoiceWithOrder) ??
+              false,
+        )
+        .map((e) => e.value)
+        .toList();
+  }
+
   Future<void> _loadInvoices() async {
     late final (int, List<Invoices>) result;
     if (_invoices.isEmpty) {
@@ -144,10 +209,35 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     });
   }
 
+  Future<bool> markInvoiceReadOnly() async {
+    final invoice = _invoices[selectedIndex!];
+
+    if (invoice.canUpdate) {
+      final appwrite = getIt<AppwriteClient>();
+      final user = await appwrite.account.get();
+
+      try {
+        await appwrite.databases.updateDocument(
+          databaseId: Invoices.collectionInfo.databaseId,
+          collectionId: Invoices.collectionInfo.$id,
+          documentId: invoice.$id,
+          permissions: [Permission.read(Role.user(user.$id))],
+        );
+      } catch (e) {
+        if (mounted) {
+          await showResultInfo(context, Failure(e.toString()));
+        }
+        return false;
+      }
+    }
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
     unawaited(_loadInvoices());
+    unawaited(_loadPrintTemplates());
     _subscription =
         getIt<RealtimeSubscriptions>().invoicesUpdates.listen((invoices) {
       switch (invoices.type) {
@@ -247,35 +337,41 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                 },
               ),
             ],
-            CommandBarButton(
-              icon: const Icon(FluentIcons.print),
-              label: const Text('Print'),
-              onPressed: () async {
-                final invoice = _invoices[selectedIndex!];
+            if (selectedIndex != null)
+              CommandBarButton(
+                icon: const Icon(FluentIcons.print),
+                label: const Text('Print'),
+                onPressed: () async {
+                  final invoice = _invoices[selectedIndex!];
 
-                if (invoice.canUpdate) {
-                  final appwrite = getIt<AppwriteClient>();
-                  final user = await appwrite.account.get();
+                  if (invoice.canUpdate) {
+                    final appwrite = getIt<AppwriteClient>();
+                    final user = await appwrite.account.get();
 
-                  try {
-                    await appwrite.databases.updateDocument(
-                      databaseId: Invoices.collectionInfo.databaseId,
-                      collectionId: Invoices.collectionInfo.$id,
-                      documentId: invoice.$id,
-                      permissions: [Permission.read(Role.user(user.$id))],
-                    );
-                  } catch (e) {
-                    if (context.mounted) {
-                      await showResultInfo(context, Failure(e.toString()));
+                    try {
+                      await appwrite.databases.updateDocument(
+                        databaseId: Invoices.collectionInfo.databaseId,
+                        collectionId: Invoices.collectionInfo.$id,
+                        documentId: invoice.$id,
+                        permissions: [Permission.read(Role.user(user.$id))],
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        await showResultInfo(context, Failure(e.toString()));
+                      }
+                      return;
                     }
-                    return;
                   }
-                }
 
-                final result = await shareInvoice(invoice);
-                if (context.mounted) await showResultInfo(context, result);
-              },
-            ),
+                  final result = await shareInvoice(invoice);
+                  if (context.mounted) await showResultInfo(context, result);
+                },
+              ),
+            if (selectedIndex != null && filterTemplates.isNotEmpty)
+              CommandBarDropdownButton(
+                title: const Text('Print'),
+                items: filterTemplates,
+              ),
           ],
         ),
       ),

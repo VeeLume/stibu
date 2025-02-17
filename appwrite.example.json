@@ -935,6 +935,57 @@
                 }
             ],
             "indexes": []
+        },
+        {
+            "$id": "67b28bbd0013cd7eff10",
+            "$permissions": [
+                "create(\"label:validProductKey\")"
+            ],
+            "databaseId": "672bcb590033b5b2780a",
+            "name": "printTemplates",
+            "enabled": true,
+            "documentSecurity": true,
+            "attributes": [
+                {
+                    "key": "content",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 65536,
+                    "default": null
+                },
+                {
+                    "key": "name",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 128,
+                    "default": null
+                },
+                {
+                    "key": "filename",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 128,
+                    "default": null
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "elements": [
+                        "InvoiceWithOrder",
+                        "Invoice",
+                        "Expense",
+                        "MonthlyReport"
+                    ],
+                    "format": "enum",
+                    "default": null
+                }
+            ],
+            "indexes": []
         }
     ],
     "databases": [
