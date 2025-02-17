@@ -60,7 +60,7 @@ Future<void> main(List<String> args) async {
 
   await getIt<AppwriteClient>().locale.get().then((value) {
     log.info('Appwrite locale: $value');
-    getIt<AppwriteClient>().client.setLocale(value);
+    getIt<AppwriteClient>().client.setLocale(value.countryCode);
   });
 
   runApp(const StibuApp());
