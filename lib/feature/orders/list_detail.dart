@@ -53,7 +53,7 @@ class OrderInfoCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: FluentTheme.of(context)
                             .accentColor
-                            .withOpacity(0.1),
+                            .withValues(alpha: .1),
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: const Padding(
@@ -209,7 +209,7 @@ class OrderProductsList extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: FluentTheme.of(context)
                                 .accentColor
-                                .withOpacity(0.1),
+                                .withValues(alpha: .1),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Padding(

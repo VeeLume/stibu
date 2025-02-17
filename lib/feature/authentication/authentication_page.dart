@@ -135,8 +135,10 @@ class _CreateAccountTabState extends State<CreateAccountTab> {
               child: TextFormBox(
                 initialValue: name,
                 placeholder: 'Name',
-                decoration: BoxDecoration(
+                decoration: WidgetStateProperty.all(
+                  BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 autofocus: true,
                 keyboardType: TextInputType.name,
@@ -155,8 +157,10 @@ class _CreateAccountTabState extends State<CreateAccountTab> {
               child: TextFormBox(
                 initialValue: email,
                 placeholder: 'Email',
-                decoration: BoxDecoration(
+                decoration: WidgetStateProperty.all(
+                  BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -174,8 +178,10 @@ class _CreateAccountTabState extends State<CreateAccountTab> {
               child: TextFormBox(
                 initialValue: password,
                 placeholder: 'Password',
-                decoration: BoxDecoration(
+                decoration: WidgetStateProperty.all(
+                  BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 obscureText: true,
                 keyboardType: TextInputType.visiblePassword,
@@ -240,8 +246,10 @@ class _LoginTabState extends State<LoginTab> {
               child: TextFormBox(
                 initialValue: email,
                 placeholder: 'Email',
-                decoration: BoxDecoration(
+                decoration: WidgetStateProperty.all(
+                  BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 autofocus: true,
                 keyboardType: TextInputType.emailAddress,
@@ -260,8 +268,10 @@ class _LoginTabState extends State<LoginTab> {
               child: TextFormBox(
                 initialValue: password,
                 placeholder: 'Password',
-                decoration: BoxDecoration(
+                decoration: WidgetStateProperty.all(
+                  BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 obscureText: true,
                 keyboardType: TextInputType.visiblePassword,

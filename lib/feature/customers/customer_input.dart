@@ -93,8 +93,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'Customer ID',
                 child: TextFormBox(
                   initialValue: _id.toString(),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'ID',
                   readOnly: true,
@@ -104,8 +106,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'Name',
                 child: TextFormBox(
                   initialValue: _name,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'Name',
                   validator: (value) {
@@ -121,8 +125,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'Email',
                 child: TextFormBox(
                   initialValue: _email,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'Email',
                   keyboardType: TextInputType.emailAddress,
@@ -133,8 +139,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'Phone',
                 child: TextFormBox(
                   initialValue: _phone,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'Phone',
                   onChanged: (value) => _phone = value,
@@ -144,8 +152,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'Street',
                 child: TextFormBox(
                   initialValue: _street,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'Street',
                   onSaved: (value) => _street = value,
@@ -164,8 +174,10 @@ class _CustomerInputDialogState extends State<CustomerInputDialog> {
                 label: 'City',
                 child: TextFormBox(
                   initialValue: _city,
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.grey)),
+                  decoration: WidgetStateProperty.all(
+                    const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey)),
+                    ),
                   ),
                   placeholder: 'City',
                   onSaved: (value) => _city = value,

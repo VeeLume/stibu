@@ -141,7 +141,7 @@ class _AddProductsDialogState extends State<AddProductsDialog> {
                               alignment: Alignment.topLeft,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: .8),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 padding: const EdgeInsets.all(8),
@@ -157,7 +157,7 @@ class _AddProductsDialogState extends State<AddProductsDialog> {
                               alignment: Alignment.topCenter,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: .8),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 padding: const EdgeInsets.all(8),
@@ -184,7 +184,7 @@ class _AddProductsDialogState extends State<AddProductsDialog> {
                               alignment: Alignment.bottomCenter,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: .8),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 padding: const EdgeInsets.all(8),

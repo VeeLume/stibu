@@ -211,8 +211,9 @@ class AuthGuard extends AutoRouteGuard {
   ) async {
     final auth = getIt<AuthProvider>();
 
-    log.info('AuthGuard: isAuthenticated=${auth.isAuthenticated}');
-    log.info('AuthGuard: isReevaluating=${resolver.isReevaluating}');
+    log
+      ..info('AuthGuard: isAuthenticated=${auth.isAuthenticated}')
+      ..info('AuthGuard: isReevaluating=${resolver.isReevaluating}');
 
     if (auth.isAuthenticated) {
       resolver.next(true);

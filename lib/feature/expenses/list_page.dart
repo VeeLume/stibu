@@ -265,7 +265,7 @@ class ExpenseListEntry extends StatelessWidget {
           onPressed: onPressed,
           tileColor: WidgetStateProperty.resolveWith((states) {
             if (states.isHovered) {
-              return FluentTheme.of(context).accentColor.withOpacity(0.1);
+              return FluentTheme.of(context).accentColor.withValues(alpha: .1);
             }
             return FluentTheme.of(context)
                 .resources
@@ -274,7 +274,7 @@ class ExpenseListEntry extends StatelessWidget {
           leading: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: FluentTheme.of(context).accentColor.withOpacity(0.1),
+              color: FluentTheme.of(context).accentColor.withValues(alpha: .1),
               borderRadius: BorderRadius.circular(5),
             ),
             child: Padding(

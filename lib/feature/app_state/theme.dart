@@ -34,7 +34,7 @@ class ThemeProvider with ChangeNotifier {
     final appwrite = getIt<AppwriteClient>();
     unawaited(
       appwrite.account.getPrefs().then((preferences) {
-        preferences.data['accentColor'] = color.value;
+        preferences.data['accentColor'] = color.toARGB32();
         appwrite.account.updatePrefs(prefs: preferences.data);
       }),
     );

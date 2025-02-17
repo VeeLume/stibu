@@ -25,7 +25,7 @@ class OrderListEntry extends StatelessWidget {
           onPressed: onPressed,
           tileColor: WidgetStateProperty.resolveWith((states) {
             if (states.isHovered) {
-              return FluentTheme.of(context).accentColor.withOpacity(0.1);
+              return FluentTheme.of(context).accentColor.withValues(alpha: .1);
             }
             return FluentTheme.of(context)
                 .resources
@@ -36,7 +36,7 @@ class OrderListEntry extends StatelessWidget {
                   height: 40,
                   width: 90,
                   decoration: BoxDecoration(
-                    color: FluentTheme.of(context).accentColor.withOpacity(0.1),
+                    color: FluentTheme.of(context).accentColor.withValues(alpha: .1),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: const Padding(
@@ -48,7 +48,7 @@ class OrderListEntry extends StatelessWidget {
                   height: 40,
                   width: 90,
                   decoration: BoxDecoration(
-                    color: FluentTheme.of(context).accentColor.withOpacity(0.1),
+                    color: FluentTheme.of(context).accentColor.withValues(alpha: .1),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Padding(

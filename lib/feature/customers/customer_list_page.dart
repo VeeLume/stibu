@@ -305,7 +305,7 @@ class CustomerListEntry extends StatelessWidget {
           selected: isSelected,
           tileColor: WidgetStateProperty.resolveWith((states) {
             if (states.isHovered) {
-              return FluentTheme.of(context).accentColor.withOpacity(0.1);
+              return FluentTheme.of(context).accentColor.withValues(alpha: 0.1);
             }
             return FluentTheme.of(context)
                 .resources
