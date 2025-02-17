@@ -81,7 +81,7 @@ class AttributeInfo {
 
     fields.add(Field((b) => b
       ..name = name
-      ..type = required ? reference : reference.nullable
+      ..type = required || array ? reference : reference.nullable
       ..modifier = FieldModifier.final$));
 
     if (this is AttributeInfoRelation) {
@@ -111,13 +111,13 @@ class AttributeInfo {
     ..name = name
     ..named = true
     ..toThis = true
-    ..required = required);
+    ..required = required || array);
 
   Parameter getDefaultFactoryParameter() => Parameter((b) => b
     ..name = name
     ..named = true
-    ..type = required ? reference : reference.nullable
-    ..required = required
+    ..type = required || array ? reference : reference.nullable
+    ..required = required || array
     ..defaultTo = required && raw.defaultValue != null ? defaultTo : null);
 
   Code getToJsonField() => Code("'$name': $name");
@@ -482,7 +482,7 @@ class AttributeInfoEnum extends AttributeInfo {
   @override
   Code getFromAppwriteField() => array
       ? Code(
-          '$name: List<$type>.unmodifiable(doc.data[\'$name\']?.map((e) => ${typeReference.symbol}.values.byName(e)) ?? [])',
+          '$name: List<${typeReference.symbol}>.unmodifiable(doc.data[\'$name\']?.map((e) => ${typeReference.symbol}.values.byName(e)) ?? [])',
         )
       : required
           ? Code(

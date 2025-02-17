@@ -14,7 +14,6 @@ class ClassFactory {
         for (final attribute in attributes) ...[
           if (attribute is AttributeInfoEnum) ...[
             Enum((b) => b
-              ..annotations.add(refer('immutable'))
               ..name = attribute.typeReference.symbol
               ..values.addAll(
                   attribute.values.map((e) => EnumValue((b) => b..name = e))))
@@ -259,7 +258,7 @@ CollectionInfo(
     ..body = Code('''
         _hash([
           \$id,
-          ${attributes.map((e) => e.array ? '...(${e.name}${e.required ? '' : ' ?? []'})' : e.name).join(
+          ${attributes.map((e) => e.array ? '...(${e.name}${e.required || e.array ? '' : ' ?? []'})' : e.name).join(
               ',\n',
             )}
         ])
