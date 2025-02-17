@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:result_type/result_type.dart';
 import 'package:stibu/appwrite.models.dart';
 import 'package:stibu/common/datetime_formatter.dart';
@@ -15,6 +16,7 @@ import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/invoices/info_card.dart';
 import 'package:stibu/feature/invoices/input.dart';
 import 'package:stibu/feature/invoices/pdf/common.dart';
+import 'package:stibu/feature/pdf_creation/typst.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
 import 'package:stibu/widgets/command_bar_dropdown_button.dart';
@@ -149,7 +151,19 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
             final invoice = _invoices[selectedIndex!];
 
             log.info(
-                'Printing invoice ${invoice.$id} with template ${template.name}');
+              'Printing invoice ${invoice.$id} with template ${template.name}',
+            );
+
+            final result = await createPdf(template, invoice);
+
+            if (mounted) {
+              await showResultInfo(context, result);
+            }
+
+            if (result.isSuccess) {
+              final pdfFile = result.success;
+              await OpenFilex.open(pdfFile.path);
+            }
           },
         );
       }
@@ -158,6 +172,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         _printTemplates[PrintTemplates(
           name: 'No templates available',
           content: 'Invalid template',
+          type: const [],
         )] = MenuFlyoutItem(
           text: const Text('No templates available'),
           onPressed: null,
@@ -180,7 +195,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     if (invoice.order == null) {
       return _printTemplates.entries
           .where(
-            (e) => e.key.type?.contains(PrintTemplatesType.Invoice) ?? false,
+            (e) => e.key.type.contains(PrintTemplatesType.invoice),
           )
           .map((e) => e.value)
           .toList();
@@ -189,8 +204,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     return _printTemplates.entries
         .where(
           (e) =>
-              e.key.type?.contains(PrintTemplatesType.InvoiceWithOrder) ??
-              false,
+              e.key.type.contains(PrintTemplatesType.invoiceWithOrder),
         )
         .map((e) => e.value)
         .toList();
@@ -337,36 +351,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                 },
               ),
             ],
-            if (selectedIndex != null)
-              CommandBarButton(
-                icon: const Icon(FluentIcons.print),
-                label: const Text('Print'),
-                onPressed: () async {
-                  final invoice = _invoices[selectedIndex!];
-
-                  if (invoice.canUpdate) {
-                    final appwrite = getIt<AppwriteClient>();
-                    final user = await appwrite.account.get();
-
-                    try {
-                      await appwrite.databases.updateDocument(
-                        databaseId: Invoices.collectionInfo.databaseId,
-                        collectionId: Invoices.collectionInfo.$id,
-                        documentId: invoice.$id,
-                        permissions: [Permission.read(Role.user(user.$id))],
-                      );
-                    } catch (e) {
-                      if (context.mounted) {
-                        await showResultInfo(context, Failure(e.toString()));
-                      }
-                      return;
-                    }
-                  }
-
-                  final result = await shareInvoice(invoice);
-                  if (context.mounted) await showResultInfo(context, result);
-                },
-              ),
             if (selectedIndex != null && filterTemplates.isNotEmpty)
               CommandBarDropdownButton(
                 title: const Text('Print'),
@@ -439,7 +423,7 @@ class InvoiceListEntry extends StatelessWidget {
           onPressed: onPressed,
           tileColor: WidgetStateProperty.resolveWith((states) {
             if (states.isHovered) {
-              return FluentTheme.of(context).accentColor.withOpacity(0.1);
+              return FluentTheme.of(context).accentColor.withValues(alpha: 0.1);
             }
             return FluentTheme.of(context)
                 .resources
@@ -448,7 +432,7 @@ class InvoiceListEntry extends StatelessWidget {
           leading: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: FluentTheme.of(context).accentColor.withOpacity(0.1),
+              color: FluentTheme.of(context).accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(5),
             ),
             child: Padding(

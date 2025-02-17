@@ -976,10 +976,10 @@
                     "required": false,
                     "array": true,
                     "elements": [
-                        "InvoiceWithOrder",
-                        "Invoice",
-                        "Expense",
-                        "MonthlyReport"
+                        "invoiceWithOrder",
+                        "invoice",
+                        "expense",
+                        "monthlyReport"
                     ],
                     "format": "enum",
                     "default": null

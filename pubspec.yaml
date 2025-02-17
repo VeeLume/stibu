@@ -41,6 +41,8 @@ dependencies:
   appwrite_model_generator:
     path: ./appwrite_model_generator
   data_table_2: ^2.5.15
+  system_info2: ^4.0.0
+  open_filex: ^4.6.0
 
 
 dev_dependencies:
