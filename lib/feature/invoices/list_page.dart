@@ -15,7 +15,6 @@ import 'package:stibu/common/show_result_info.dart';
 import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/invoices/info_card.dart';
 import 'package:stibu/feature/invoices/input.dart';
-import 'package:stibu/feature/invoices/pdf/common.dart';
 import 'package:stibu/feature/pdf_creation/typst.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
