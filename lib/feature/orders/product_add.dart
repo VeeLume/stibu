@@ -117,90 +117,14 @@ class _AddProductsDialogState extends State<AddProductsDialog> {
                       (element) => element.id == orderProduct.id,
                     );
 
-                    return Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child:
-                          // Image
-                          Container(
-                        decoration: product.imageUrl == null
-                            ? null
-                            : BoxDecoration(
-                                image: DecorationImage(
-                                  image: NetworkImage(product.imageUrl!),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                        child: Stack(
-                          children: [
-                            Align(
-                              alignment: Alignment.topLeft,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .8),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  orderProduct.quantity.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.topCenter,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .8),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  product.id.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: IconButton(
-                                icon: const Icon(FluentIcons.delete),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedProducts.removeAt(index);
-                                  });
-                                },
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .8),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  product.title,
-                                  textWidthBasis: TextWidthBasis.longestLine,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return ProductPreviewContainer(
+                      product: product,
+                      quantity: orderProduct.quantity,
+                      onDelete: () {
+                        setState(() {
+                          selectedProducts.removeAt(index);
+                        });
+                      },
                     );
                   },
                 ),
@@ -225,6 +149,117 @@ class _AddProductsDialogState extends State<AddProductsDialog> {
           child: const Text('Add'),
         ),
       ],
+    );
+  }
+}
+
+class ProductPreviewContainer extends StatelessWidget {
+  final Products product;
+  final int quantity;
+  final void Function() onDelete;
+
+  const ProductPreviewContainer({
+    super.key,
+    required this.product,
+    required this.quantity,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final backgroundColor = theme.brightness == Brightness.dark
+        ? Colors.black.withValues(alpha: .8)
+        : Colors.white.withValues(alpha: .8);
+    final textColor =
+        theme.brightness == Brightness.dark ? Colors.white : Colors.black;
+    final iconColor =
+        theme.brightness == Brightness.dark ? Colors.black : Colors.white;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Container(
+        decoration: product.imageUrl == null
+            ? null
+            : BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(product.imageUrl!),
+                  fit: BoxFit.cover,
+                ),
+              ),
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  quantity.toString(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topCenter,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  product.id.toString(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: Icon(
+                  FluentIcons.delete,
+                  color: iconColor,
+                ),
+                onPressed: onDelete,
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  product.title,
+                  textWidthBasis: TextWidthBasis.longestLine,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
