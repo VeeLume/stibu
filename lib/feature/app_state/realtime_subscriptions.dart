@@ -149,6 +149,10 @@ class RealtimeSubscriptions {
 
     final authProvider = getIt<AuthProvider>();
 
+    if (authProvider.isAuthenticated) {
+      _realtimeListener.addSubscriptions(_realtimeListeners);
+    }
+
     authProvider.addListener(() {
       if (authProvider.isAuthenticated) {
         _realtimeListener.addSubscriptions(_realtimeListeners);

@@ -58,6 +58,7 @@ class _OrderListPageState extends State<OrderListPage> {
         }
       case RealtimeUpdateType.delete:
         _orders.removeWhere((e) => e.$id == item.$id);
+        setState(() {});
     }
   }
 

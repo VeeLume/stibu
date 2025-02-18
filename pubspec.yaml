@@ -22,7 +22,7 @@ dependencies:
   app_links: ^6.2.0
   fluent_ui: ^4.9.1
   system_theme: ^3.0.0
-  appwrite: ^13.0.0
+  appwrite: ^14.0.0
   result_type: ^0.2.0
   bitsdojo_window: ^0.1.6
   get_it: ^7.7.0
