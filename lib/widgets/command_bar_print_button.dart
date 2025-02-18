@@ -140,7 +140,7 @@ class CommandBarPrintButton extends CommandBarItem {
     if (template.isEmpty) {
       return [
         MenuFlyoutItem(
-          text: Text('No templates available'),
+          text: const Text('No templates available'),
           onPressed: () {},
         ),
       ];
