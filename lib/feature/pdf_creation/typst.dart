@@ -43,7 +43,7 @@ Future<Result<File, String>> createPdf(
     return Success(pdfFile);
   }
 
-  return Failure('Failed to create pdf');
+  return Failure('Failed to create pdf: ${result.stderr}');
 }
 
 const _typstRepository =

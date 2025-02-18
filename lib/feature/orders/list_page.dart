@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:result_type/result_type.dart';
 import 'package:stibu/appwrite.models.dart';
 import 'package:stibu/common/is_large_screen.dart';
 import 'package:stibu/common/scroll_to_index.dart';
@@ -10,7 +12,9 @@ import 'package:stibu/common/show_result_info.dart';
 import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/orders/list_detail.dart';
 import 'package:stibu/feature/orders/list_entry.dart';
+import 'package:stibu/feature/pdf_creation/typst.dart';
 import 'package:stibu/main.dart';
+import 'package:stibu/widgets/command_bar_print_button.dart';
 import 'package:stibu/widgets/picker.dart';
 
 @RoutePage()
@@ -41,6 +45,28 @@ class _OrderListPageState extends State<OrderListPage> {
       _totalOders = result.$1;
       _orders.addAll(result.$2);
     });
+  }
+
+  Future<bool> markInvoiceReadOnly(Invoices invoice) async {
+    if (invoice.canUpdate) {
+      final appwrite = getIt<AppwriteClient>();
+      final user = await appwrite.account.get();
+
+      try {
+        await appwrite.databases.updateDocument(
+          databaseId: Invoices.collectionInfo.databaseId,
+          collectionId: Invoices.collectionInfo.$id,
+          documentId: invoice.$id,
+          permissions: [Permission.read(Role.user(user.$id))],
+        );
+      } catch (e) {
+        if (mounted) {
+          await showResultInfo(context, Failure(e.toString()));
+        }
+        return false;
+      }
+    }
+    return true;
   }
 
   void _processEvent(RealtimeUpdateType type, Orders item) {
@@ -141,6 +167,28 @@ class _OrderListPageState extends State<OrderListPage> {
                 },
               ),
             ],
+            if (selectedIndex != null &&
+                _orders[selectedIndex!].invoice != null)
+              CommandBarPrintButton(
+                title: const Text('Print Invoice'),
+                type: PrintTemplatesType.invoiceWithOrder,
+                onPressed: (template) async {
+                  final invoice =
+                      (await Invoices.get(_orders[selectedIndex!].invoice!.$id))
+                          .success;
+
+                  final isOK = await markInvoiceReadOnly(invoice);
+                  if (!isOK) return;
+
+                  final result = await createPdf(template, invoice);
+
+                  if (result.isFailure && context.mounted) {
+                    await showResultInfo(context, result);
+                  } else {
+                    await OpenFilex.open(result.success.path);
+                  }
+                },
+              ),
           ],
         ),
       ),
