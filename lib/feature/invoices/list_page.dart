@@ -18,7 +18,7 @@ import 'package:stibu/feature/invoices/input.dart';
 import 'package:stibu/feature/pdf_creation/typst.dart';
 import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
-import 'package:stibu/widgets/command_bar_dropdown_button.dart';
+import 'package:stibu/widgets/command_bar_print_button.dart';
 
 Future<Invoices?> _showInvoiceCreateDialog(BuildContext context) async {
   final invoice = await showDialog<Invoices>(
@@ -133,81 +133,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   StreamSubscription? _subscription;
   final _scrollController = ScrollController();
 
-  final Map<PrintTemplates, MenuFlyoutItemBase> _printTemplates = {};
-
-  Future<void> _loadPrintTemplates() async {
-    late final (int, List<PrintTemplates>) result;
-    result = (await PrintTemplates.page(offset: 0)).success;
-
-    setState(() {
-      for (final template in result.$2) {
-        _printTemplates[template] = MenuFlyoutItem(
-          text: Text(template.name),
-          onPressed: () async {
-            final isOK = await markInvoiceReadOnly();
-            if (!isOK) return;
-
-            final invoice = _invoices[selectedIndex!];
-
-            log.info(
-              'Printing invoice ${invoice.$id} with template ${template.name}',
-            );
-
-            final result = await createPdf(template, invoice);
-
-            if (mounted) {
-              await showResultInfo(context, result);
-            }
-
-            if (result.isSuccess) {
-              final pdfFile = result.success;
-              await OpenFilex.open(pdfFile.path);
-            }
-          },
-        );
-      }
-
-      if (_printTemplates.isEmpty) {
-        _printTemplates[PrintTemplates(
-          name: 'No templates available',
-          content: 'Invalid template',
-          type: const [],
-        )] = MenuFlyoutItem(
-          text: const Text('No templates available'),
-          onPressed: null,
-        );
-      }
-
-      // _printTemplates.add(const MenuFlyoutSeparator());
-      // _printTemplates.add(MenuFlyoutItem(
-      //   text: const Text('Manage templates'),
-      //   onPressed: () async {
-      //     await context.navigateTo(PrintTemplatesRoute());
-      //   },
-      // ),);
-    });
-  }
-
-  List<MenuFlyoutItemBase> get filterTemplates {
-    final invoice = _invoices[selectedIndex!];
-
-    if (invoice.order == null) {
-      return _printTemplates.entries
-          .where(
-            (e) => e.key.type.contains(PrintTemplatesType.invoice),
-          )
-          .map((e) => e.value)
-          .toList();
-    }
-
-    return _printTemplates.entries
-        .where(
-          (e) =>
-              e.key.type.contains(PrintTemplatesType.invoiceWithOrder),
-        )
-        .map((e) => e.value)
-        .toList();
-  }
 
   Future<void> _loadInvoices() async {
     late final (int, List<Invoices>) result;
@@ -250,7 +175,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   void initState() {
     super.initState();
     unawaited(_loadInvoices());
-    unawaited(_loadPrintTemplates());
     _subscription =
         getIt<RealtimeSubscriptions>().invoicesUpdates.listen((invoices) {
       switch (invoices.type) {
@@ -350,10 +274,33 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                 },
               ),
             ],
-            if (selectedIndex != null && filterTemplates.isNotEmpty)
-              CommandBarDropdownButton(
+            if (selectedIndex != null)
+              CommandBarPrintButton(
                 title: const Text('Print'),
-                items: filterTemplates,
+                type: _invoices[selectedIndex!].order != null
+                    ? PrintTemplatesType.invoiceWithOrder
+                    : PrintTemplatesType.invoice,
+                onPressed: (template) async {
+                  final isOK = await markInvoiceReadOnly();
+                  if (!isOK) return;
+
+                  final invoice = _invoices[selectedIndex!];
+
+                  log.info(
+                    'Printing invoice ${invoice.$id} with template ${template.name}',
+                  );
+
+                  final result = await createPdf(template, invoice);
+
+                  if (context.mounted) {
+                    await showResultInfo(context, result);
+                  }
+
+                  if (result.isSuccess) {
+                    log.info('Invoice ${invoice.$id} printed');
+                    await OpenFilex.open(result.success.path);
+                  }
+                },
               ),
           ],
         ),

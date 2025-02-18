@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:logging/logging.dart';
 import 'package:stibu/appwrite.models.dart';
 import 'package:stibu/feature/app_state/auth_provider.dart';
+import 'package:stibu/feature/app_state/print_templates.dart';
 import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/app_state/theme.dart';
 import 'package:stibu/feature/router/router.dart';
@@ -44,6 +45,9 @@ Future<void> main(List<String> args) async {
     RealtimeSubscriptions.new,
   );
   GetIt.I.registerLazySingleton<ThemeProvider>(ThemeProvider.new);
+  GetIt.I.registerLazySingleton<PrintTemplatesProvider>(
+    PrintTemplatesProvider.new,
+  );
 
   registerProtocolHandler('stibu');
 
