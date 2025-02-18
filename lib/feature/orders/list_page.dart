@@ -13,6 +13,7 @@ import 'package:stibu/feature/app_state/realtime_subscriptions.dart';
 import 'package:stibu/feature/orders/list_detail.dart';
 import 'package:stibu/feature/orders/list_entry.dart';
 import 'package:stibu/feature/pdf_creation/typst.dart';
+import 'package:stibu/feature/router/router.gr.dart';
 import 'package:stibu/main.dart';
 import 'package:stibu/widgets/command_bar_print_button.dart';
 import 'package:stibu/widgets/picker.dart';
@@ -214,7 +215,13 @@ class _OrderListPageState extends State<OrderListPage> {
                   invoice: invoice,
                   order: order,
                   selected: selectedIndex == index,
-                  onPressed: () {
+                  onPressed: () async {
+                    if (!largeScreen) {
+                      await context.navigateTo(OrderDetailRoute(id: order.$id));
+                    }
+
+                    if (selectedIndex == index) return;
+
                     setState(() {
                       selectedIndex = index;
                     });

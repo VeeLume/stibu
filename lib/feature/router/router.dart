@@ -45,6 +45,7 @@ const CustomerTab = EmptyShellRoute('CustomerTab');
 const RevenueAndExpensesTab = EmptyShellRoute('RevenueAndExpensesTab');
 const InvoiceTap = EmptyShellRoute('InvoiceTab');
 const ExpenseTab = EmptyShellRoute('ExpenseTab');
+const OrderTab = EmptyShellRoute('OrderTab');
 
 @AutoRouterConfig(replaceInRouteName: 'Page,Route')
 class AppRouter extends RootStackRouter {
@@ -105,7 +106,17 @@ class AppRouter extends RootStackRouter {
             ),
             NoTransitionRoute(
               path: 'orders',
-              page: OrderListRoute.page,
+              page: OrderTab,
+              children: [
+                NoTransitionRoute(
+                  path: '',
+                  page: OrderListRoute.page,
+                ),
+                NoTransitionRoute(
+                  path: ':id',
+                  page: OrderDetailRoute.page,
+                ),
+              ],
             ),
             NoTransitionRoute(
               path: 'products',
