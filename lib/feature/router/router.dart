@@ -243,8 +243,10 @@ class AuthGuard extends AutoRouteGuard {
 
       await resolver.redirect(
         AuthenticationRoute(
-          onAuthenticated: (didLogin) =>
-              resolver.resolveNext(didLogin, reevaluateNext: false),
+          onAuthenticated: (didLogin) {
+            log.info('AuthGuard: didLogin=$didLogin');
+            // resolver.resolveNext(didLogin, reevaluateNext: false);
+          },
         ),
       );
     }

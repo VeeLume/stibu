@@ -12,8 +12,8 @@ environment:
 
 dependencies:
   code_builder: ^4.10.0
-  dart_style: ^2.3.7
-  dart_helper_utils: ^2.7.0
+  dart_style: ^3.0.1
+  dart_helper_utils: ^4.1.0
   build: ^2.4.1
 
 dev_dependencies:

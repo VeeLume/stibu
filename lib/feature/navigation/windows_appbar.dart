@@ -38,7 +38,12 @@ final _closeDarkThemeColors = WindowButtonColors(
   iconMouseDown: const Color(0xFFE5ABA7),
 );
 
-NavigationAppBar buildNavigationAppBar(BuildContext context) {
+dynamic buildNavigationAppBar(BuildContext context) {
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      MediaQuery.of(context).orientation == Orientation.landscape) {
+    return null;
+  }
+
   final brightness = FluentTheme.of(context).brightness;
 
   return NavigationAppBar(

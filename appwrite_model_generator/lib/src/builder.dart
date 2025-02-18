@@ -15,7 +15,7 @@ import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
 
 final _dartfmt = DartFormatter(
-  fixes: StyleFix.all,
+  languageVersion: DartFormatter.latestLanguageVersion,
 );
 
 class ModelBuilder implements Builder {
