@@ -1,0 +1,22 @@
+name: get_stampinup_products
+description: A sample command-line application.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+# Add regular dependencies here.
+dependencies:
+  collection: ^1.19.1
+  dart_appwrite: ^16.0.0
+  dart_helper_utils: ^5.1.0
+  get_it: ^8.0.3
+  html_unescape: ^2.0.0
+  http: ^1.2.2
+  result_type: ^1.0.0
+
+
+
+dev_dependencies:
+  lints: ^5.0.0

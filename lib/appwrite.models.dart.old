@@ -1,0 +1,4209 @@
+// ignore_for_file: require_trailing_commas
+
+import 'package:appwrite/appwrite.dart';
+import 'package:appwrite/models.dart' hide Locale;
+import 'package:collection/collection.dart';
+import 'package:dart_helper_utils/dart_helper_utils.dart';
+import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
+import 'package:result_type/result_type.dart';
+
+final _eq = const ListEquality().equals;
+final _hash = const ListEquality().hash;
+final _client = GetIt.I<AppwriteClient>();
+
+class RLevel {
+  RLevel({
+    this.includeId = true,
+    this.includeData = true,
+    this.includePermissions = false,
+    this.permissions = const [],
+  });
+
+  final bool includeId;
+
+  final bool includeData;
+
+  final bool includePermissions;
+
+  final List<String> permissions;
+}
+
+@immutable
+abstract class AppwriteModel<T> {
+  const AppwriteModel({
+    required this.$id,
+    required this.$collectionId,
+    required this.$databaseId,
+    required this.$createdAt,
+    required this.$updatedAt,
+    required this.$permissions,
+  });
+
+  final String $id;
+
+  final String $collectionId;
+
+  final String $databaseId;
+
+  final DateTime $createdAt;
+
+  final DateTime $updatedAt;
+
+  final List<String> $permissions;
+
+  bool get canRead => $permissions.any((e) => e.contains('read'));
+
+  bool get canUpdate => $permissions.any((e) => e.contains('update'));
+
+  bool get canDelete => $permissions.any((e) => e.contains('delete'));
+
+  bool get canReadUpdate => canRead && canUpdate;
+
+  Map<String, dynamic> toJson();
+  T copyWith({
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  });
+  @override
+  String toString() => toJson().toString();
+
+  dynamic toAppwrite({List<RLevel> relationLevels = const []});
+}
+
+@immutable
+class CollectionInfo {
+  const CollectionInfo({
+    required this.$id,
+    required this.$permissions,
+    required this.databaseId,
+    required this.name,
+    required this.enabled,
+    required this.documentSecurity,
+  });
+
+  final String $id;
+
+  final List<String> $permissions;
+
+  final String databaseId;
+
+  final String name;
+
+  final bool enabled;
+
+  final bool documentSecurity;
+}
+
+@immutable
+class Relation {
+  const Relation({
+    this.required = false,
+    this.array = false,
+    required this.relatedCollection,
+    required this.relationType,
+    this.twoWay = false,
+    required this.twoWayKey,
+    required this.onDelete,
+    required this.side,
+  });
+
+  final bool required;
+
+  final bool array;
+
+  final String relatedCollection;
+
+  final RelationType relationType;
+
+  final bool twoWay;
+
+  final String? twoWayKey;
+
+  final RelationOnDelete onDelete;
+
+  final RelationSide side;
+}
+
+enum RelationType { oneToOne, oneToMany, manyToOne, manyToMany }
+
+enum RelationOnDelete { setNull, cascade, restrict }
+
+enum RelationSide { parent, child }
+
+class AppwriteClient {
+  AppwriteClient(this.client)
+    : account = Account(client),
+      databases = Databases(client),
+      realtime = Realtime(client),
+      functions = Functions(client),
+      avatars = Avatars(client),
+      storage = Storage(client),
+      locale = Locale(client);
+
+  final Client client;
+
+  final Account account;
+
+  final Databases databases;
+
+  final Realtime realtime;
+
+  final Functions functions;
+
+  final Avatars avatars;
+
+  final Storage storage;
+
+  final Locale locale;
+
+  Future<Result<(int, List<T>), AppwriteException>>
+  page<T extends AppwriteModel<T>>({
+    required String databaseId,
+    required String collectionId,
+    required T Function(Document doc) fromAppwrite,
+    int limit = 25,
+    int? offset,
+    T? last,
+    List<String>? queries,
+  }) async {
+    assert(limit > 0, 'Limit must be greater than 0');
+    assert(
+      offset != null && offset >= 0 || last != null,
+      'Either offset or last must be provided',
+    );
+    try {
+      final response = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        queries: [
+          Query.limit(limit),
+          if (offset != null) Query.offset(offset),
+          if (last != null) Query.cursorAfter(last.$id),
+          ...?queries,
+        ],
+      );
+      return Success((
+        response.total,
+        response.documents.map((e) => fromAppwrite(e)).toList(),
+      ));
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+
+  Future<Result<(int, List<T>), AppwriteException>>
+  list<T extends AppwriteModel<T>>({
+    required String databaseId,
+    required String collectionId,
+    required T Function(Document doc) fromAppwrite,
+    List<String>? queries,
+  }) async {
+    try {
+      final response = await databases.listDocuments(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        queries: queries ?? [],
+      );
+      return Success((
+        response.total,
+        response.documents.map((e) => fromAppwrite(e)).toList(),
+      ));
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+
+  Future<Result<T, AppwriteException>> get<T extends AppwriteModel<T>>({
+    required String databaseId,
+    required String collectionId,
+    required String documentId,
+    required T Function(Document doc) fromAppwrite,
+    List<String>? queries,
+  }) async {
+    try {
+      final response = await databases.getDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: documentId,
+        queries: queries,
+      );
+      return Success(fromAppwrite(response));
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+
+  Future<Result<T, AppwriteException>> create<T extends AppwriteModel<T>>({
+    required String databaseId,
+    required String collectionId,
+    required T Function(Document doc) fromAppwrite,
+    required T model,
+    List<RLevel> relationLevels = const [],
+  }) async {
+    try {
+      final response = await databases.createDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: model.$id,
+        data: model.toAppwrite(relationLevels: relationLevels),
+        // TODO: might need to add permissions
+        // permissions:
+        //     model.$permissions.where((e) => !e.contains('create')).toList(),
+      );
+      return Success(fromAppwrite(response));
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+
+  Future<Result<T, AppwriteException>> update<T extends AppwriteModel<T>>({
+    required String databaseId,
+    required String collectionId,
+    required T Function(Document doc) fromAppwrite,
+    required T model,
+    List<RLevel> relationLevels = const [],
+  }) async {
+    try {
+      final response = await databases.updateDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: model.$id,
+        data: model.toAppwrite(relationLevels: relationLevels),
+        permissions: model.$permissions,
+      );
+      return Success(fromAppwrite(response));
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+
+  Future<Result<void, AppwriteException>> delete({
+    required String databaseId,
+    required String collectionId,
+    required String documentId,
+  }) async {
+    try {
+      await databases.deleteDocument(
+        databaseId: databaseId,
+        collectionId: collectionId,
+        documentId: documentId,
+      );
+      return Success(null);
+    } on AppwriteException catch (e) {
+      return Failure(e);
+    }
+  }
+}
+
+@immutable
+class Products extends AppwriteModel<Products> {
+  Products._({
+    required this.id,
+    required this.itemPrice,
+    required this.qtyLimit,
+    required this.originalItemPrice,
+    required this.formattedItemPrice,
+    required this.formattedOriginalItemPrice,
+    required this.hasSalePrice,
+    required this.launchDate,
+    required this.endSaleDate,
+    required this.beginSaleDate,
+    required this.slug,
+    required this.images,
+    required this.title,
+    required this.description,
+    this.inventoryStatus,
+    required this.culture,
+    required this.color,
+    required this.canBePurchased,
+    required this.exclusiveTo,
+    required this.categorySlugs,
+    this.alternateId,
+    this.replacementForItemId,
+    this.hoverImage,
+    this.metaDescription,
+    this.metaTitle,
+    required this.isCommissionable,
+    required this.excludeFrom,
+    required this.languages,
+    required this.qualifier,
+    required this.lifeCycleStates,
+    required this.offeringType,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(
+         id >= -9223372036854775808,
+         'id is less than -9223372036854775808',
+       ),
+       assert(
+         id <= 9223372036854775807,
+         'id is greater than 9223372036854775807',
+       ),
+       assert(
+         itemPrice >= -9223372036854775808,
+         'itemPrice is less than -9223372036854775808',
+       ),
+       assert(
+         itemPrice <= 9223372036854775807,
+         'itemPrice is greater than 9223372036854775807',
+       ),
+       assert(
+         qtyLimit >= -9223372036854775808,
+         'qtyLimit is less than -9223372036854775808',
+       ),
+       assert(
+         qtyLimit <= 9223372036854775807,
+         'qtyLimit is greater than 9223372036854775807',
+       ),
+       assert(
+         originalItemPrice >= -9223372036854775808,
+         'originalItemPrice is less than -9223372036854775808',
+       ),
+       assert(
+         originalItemPrice <= 9223372036854775807,
+         'originalItemPrice is greater than 9223372036854775807',
+       ),
+       assert(formattedItemPrice.isNotBlank, 'formattedItemPrice is blank'),
+       assert(
+         formattedItemPrice.length <= 64,
+         'formattedItemPrice is greater than 64',
+       ),
+       assert(
+         formattedOriginalItemPrice.isNotBlank,
+         'formattedOriginalItemPrice is blank',
+       ),
+       assert(
+         formattedOriginalItemPrice.length <= 64,
+         'formattedOriginalItemPrice is greater than 64',
+       ),
+       assert(launchDate.isUtc, 'launchDate is not UTC'),
+       assert(endSaleDate.isUtc, 'endSaleDate is not UTC'),
+       assert(beginSaleDate.isUtc, 'beginSaleDate is not UTC'),
+       assert(slug.isNotBlank, 'slug is blank'),
+       assert(slug.length <= 1024, 'slug is greater than 1024'),
+       assert(images.every((e) => e.isNotBlank), 'images is blank'),
+       assert(images.every((e) => e.length <= 64), 'images is greater than 64'),
+       assert(title.isNotBlank, 'title is blank'),
+       assert(title.length <= 1024, 'title is greater than 1024'),
+       assert(description.isNotBlank, 'description is blank'),
+       assert(description.length <= 4096, 'description is greater than 4096'),
+       assert(
+         inventoryStatus == null || inventoryStatus.isNotBlank,
+         'inventoryStatus is blank',
+       ),
+       assert(
+         inventoryStatus == null || inventoryStatus.length <= 64,
+         'inventoryStatus is greater than 64',
+       ),
+       assert(culture.isNotBlank, 'culture is blank'),
+       assert(culture.length <= 64, 'culture is greater than 64'),
+       assert(color.every((e) => e.isNotBlank), 'color is blank'),
+       assert(color.every((e) => e.length <= 64), 'color is greater than 64'),
+       assert(exclusiveTo.every((e) => e.isNotBlank), 'exclusiveTo is blank'),
+       assert(
+         exclusiveTo.every((e) => e.length <= 64),
+         'exclusiveTo is greater than 64',
+       ),
+       assert(
+         categorySlugs.every((e) => e.isNotBlank),
+         'categorySlugs is blank',
+       ),
+       assert(
+         categorySlugs.every((e) => e.length <= 1024),
+         'categorySlugs is greater than 1024',
+       ),
+       assert(
+         alternateId == null || alternateId.isNotBlank,
+         'alternateId is blank',
+       ),
+       assert(
+         alternateId == null || alternateId.length <= 64,
+         'alternateId is greater than 64',
+       ),
+       assert(
+         replacementForItemId == null ||
+             replacementForItemId >= -9223372036854775808,
+         'replacementForItemId is less than -9223372036854775808',
+       ),
+       assert(
+         replacementForItemId == null ||
+             replacementForItemId <= 9223372036854775807,
+         'replacementForItemId is greater than 9223372036854775807',
+       ),
+       assert(
+         hoverImage == null || hoverImage.isNotBlank,
+         'hoverImage is blank',
+       ),
+       assert(
+         hoverImage == null || hoverImage.length <= 1024,
+         'hoverImage is greater than 1024',
+       ),
+       assert(
+         metaDescription == null || metaDescription.isNotBlank,
+         'metaDescription is blank',
+       ),
+       assert(
+         metaDescription == null || metaDescription.length <= 4096,
+         'metaDescription is greater than 4096',
+       ),
+       assert(metaTitle == null || metaTitle.isNotBlank, 'metaTitle is blank'),
+       assert(
+         metaTitle == null || metaTitle.length <= 1024,
+         'metaTitle is greater than 1024',
+       ),
+       assert(excludeFrom.every((e) => e.isNotBlank), 'excludeFrom is blank'),
+       assert(
+         excludeFrom.every((e) => e.length <= 64),
+         'excludeFrom is greater than 64',
+       ),
+       assert(languages.every((e) => e.isNotBlank), 'languages is blank'),
+       assert(
+         languages.every((e) => e.length <= 64),
+         'languages is greater than 64',
+       ),
+       assert(qualifier.every((e) => e.isNotBlank), 'qualifier is blank'),
+       assert(
+         qualifier.every((e) => e.length <= 64),
+         'qualifier is greater than 64',
+       ),
+       assert(
+         lifeCycleStates.every((e) => e.isNotBlank),
+         'lifeCycleStates is blank',
+       ),
+       assert(
+         lifeCycleStates.every((e) => e.length <= 64),
+         'lifeCycleStates is greater than 64',
+       ),
+       assert(offeringType.isNotBlank, 'offeringType is blank'),
+       assert(offeringType.length <= 64, 'offeringType is greater than 64');
+
+  factory Products({
+    required int id,
+    required int itemPrice,
+    required int qtyLimit,
+    required int originalItemPrice,
+    required String formattedItemPrice,
+    required String formattedOriginalItemPrice,
+    required bool hasSalePrice,
+    required DateTime launchDate,
+    required DateTime endSaleDate,
+    required DateTime beginSaleDate,
+    required String slug,
+    required List<String> images,
+    required String title,
+    required String description,
+    String? inventoryStatus,
+    required String culture,
+    required List<String> color,
+    required bool canBePurchased,
+    required List<String> exclusiveTo,
+    required List<String> categorySlugs,
+    String? alternateId,
+    int? replacementForItemId,
+    String? hoverImage,
+    String? metaDescription,
+    String? metaTitle,
+    required bool isCommissionable,
+    required List<String> excludeFrom,
+    required List<String> languages,
+    required List<String> qualifier,
+    required List<String> lifeCycleStates,
+    required String offeringType,
+  }) => Products._(
+    id: id,
+    itemPrice: itemPrice,
+    qtyLimit: qtyLimit,
+    originalItemPrice: originalItemPrice,
+    formattedItemPrice: formattedItemPrice,
+    formattedOriginalItemPrice: formattedOriginalItemPrice,
+    hasSalePrice: hasSalePrice,
+    launchDate: launchDate,
+    endSaleDate: endSaleDate,
+    beginSaleDate: beginSaleDate,
+    slug: slug,
+    images: images,
+    title: title,
+    description: description,
+    inventoryStatus: inventoryStatus,
+    culture: culture,
+    color: color,
+    canBePurchased: canBePurchased,
+    exclusiveTo: exclusiveTo,
+    categorySlugs: categorySlugs,
+    alternateId: alternateId,
+    replacementForItemId: replacementForItemId,
+    hoverImage: hoverImage,
+    metaDescription: metaDescription,
+    metaTitle: metaTitle,
+    isCommissionable: isCommissionable,
+    excludeFrom: excludeFrom,
+    languages: languages,
+    qualifier: qualifier,
+    lifeCycleStates: lifeCycleStates,
+    offeringType: offeringType,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Products.fromAppwrite(Document doc) => Products._(
+    id: doc.data['id'],
+    itemPrice: doc.data['itemPrice'],
+    qtyLimit: doc.data['qtyLimit'],
+    originalItemPrice: doc.data['originalItemPrice'],
+    formattedItemPrice: doc.data['formattedItemPrice'],
+    formattedOriginalItemPrice: doc.data['formattedOriginalItemPrice'],
+    hasSalePrice: doc.data['hasSalePrice'],
+    launchDate: DateTime.parse(doc.data['launchDate']),
+    endSaleDate: DateTime.parse(doc.data['endSaleDate']),
+    beginSaleDate: DateTime.parse(doc.data['beginSaleDate']),
+    slug: doc.data['slug'],
+    images: List<String>.unmodifiable(doc.data['images'] ?? []),
+    title: doc.data['title'],
+    description: doc.data['description'],
+    inventoryStatus: doc.data['inventoryStatus'],
+    culture: doc.data['culture'],
+    color: List<String>.unmodifiable(doc.data['color'] ?? []),
+    canBePurchased: doc.data['canBePurchased'],
+    exclusiveTo: List<String>.unmodifiable(doc.data['exclusiveTo'] ?? []),
+    categorySlugs: List<String>.unmodifiable(doc.data['categorySlugs'] ?? []),
+    alternateId: doc.data['alternateId'],
+    replacementForItemId: doc.data['replacementForItemId'],
+    hoverImage: doc.data['hoverImage'],
+    metaDescription: doc.data['metaDescription'],
+    metaTitle: doc.data['metaTitle'],
+    isCommissionable: doc.data['isCommissionable'],
+    excludeFrom: List<String>.unmodifiable(doc.data['excludeFrom'] ?? []),
+    languages: List<String>.unmodifiable(doc.data['languages'] ?? []),
+    qualifier: List<String>.unmodifiable(doc.data['qualifier'] ?? []),
+    lifeCycleStates: List<String>.unmodifiable(
+      doc.data['lifeCycleStates'] ?? [],
+    ),
+    offeringType: doc.data['offeringType'],
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: 'products',
+    $permissions: ['read("users")'],
+    databaseId: 'public',
+    name: 'products',
+    enabled: true,
+    documentSecurity: false,
+  );
+
+  final int id;
+
+  final int itemPrice;
+
+  final int qtyLimit;
+
+  final int originalItemPrice;
+
+  final String formattedItemPrice;
+
+  final String formattedOriginalItemPrice;
+
+  final bool hasSalePrice;
+
+  final DateTime launchDate;
+
+  final DateTime endSaleDate;
+
+  final DateTime beginSaleDate;
+
+  final String slug;
+
+  final List<String> images;
+
+  final String title;
+
+  final String description;
+
+  final String? inventoryStatus;
+
+  final String culture;
+
+  final List<String> color;
+
+  final bool canBePurchased;
+
+  final List<String> exclusiveTo;
+
+  final List<String> categorySlugs;
+
+  final String? alternateId;
+
+  final int? replacementForItemId;
+
+  final String? hoverImage;
+
+  final String? metaDescription;
+
+  final String? metaTitle;
+
+  final bool isCommissionable;
+
+  final List<String> excludeFrom;
+
+  final List<String> languages;
+
+  final List<String> qualifier;
+
+  final List<String> lifeCycleStates;
+
+  final String offeringType;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'itemPrice': itemPrice,
+    'qtyLimit': qtyLimit,
+    'originalItemPrice': originalItemPrice,
+    'formattedItemPrice': formattedItemPrice,
+    'formattedOriginalItemPrice': formattedOriginalItemPrice,
+    'hasSalePrice': hasSalePrice,
+    'launchDate': launchDate.toIso8601String(),
+    'endSaleDate': endSaleDate.toIso8601String(),
+    'beginSaleDate': beginSaleDate.toIso8601String(),
+    'slug': slug,
+    'images': images,
+    'title': title,
+    'description': description,
+    'inventoryStatus': inventoryStatus,
+    'culture': culture,
+    'color': color,
+    'canBePurchased': canBePurchased,
+    'exclusiveTo': exclusiveTo,
+    'categorySlugs': categorySlugs,
+    'alternateId': alternateId,
+    'replacementForItemId': replacementForItemId,
+    'hoverImage': hoverImage,
+    'metaDescription': metaDescription,
+    'metaTitle': metaTitle,
+    'isCommissionable': isCommissionable,
+    'excludeFrom': excludeFrom,
+    'languages': languages,
+    'qualifier': qualifier,
+    'lifeCycleStates': lifeCycleStates,
+    'offeringType': offeringType,
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'id': id,
+          'itemPrice': itemPrice,
+          'qtyLimit': qtyLimit,
+          'originalItemPrice': originalItemPrice,
+          'formattedItemPrice': formattedItemPrice,
+          'formattedOriginalItemPrice': formattedOriginalItemPrice,
+          'hasSalePrice': hasSalePrice,
+          'launchDate': launchDate.toIso8601String(),
+          'endSaleDate': endSaleDate.toIso8601String(),
+          'beginSaleDate': beginSaleDate.toIso8601String(),
+          'slug': slug,
+          'images': images,
+          'title': title,
+          'description': description,
+          'inventoryStatus': inventoryStatus,
+          'culture': culture,
+          'color': color,
+          'canBePurchased': canBePurchased,
+          'exclusiveTo': exclusiveTo,
+          'categorySlugs': categorySlugs,
+          'alternateId': alternateId,
+          'replacementForItemId': replacementForItemId,
+          'hoverImage': hoverImage,
+          'metaDescription': metaDescription,
+          'metaTitle': metaTitle,
+          'isCommissionable': isCommissionable,
+          'excludeFrom': excludeFrom,
+          'languages': languages,
+          'qualifier': qualifier,
+          'lifeCycleStates': lifeCycleStates,
+          'offeringType': offeringType,
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'id': id,
+        'itemPrice': itemPrice,
+        'qtyLimit': qtyLimit,
+        'originalItemPrice': originalItemPrice,
+        'formattedItemPrice': formattedItemPrice,
+        'formattedOriginalItemPrice': formattedOriginalItemPrice,
+        'hasSalePrice': hasSalePrice,
+        'launchDate': launchDate.toIso8601String(),
+        'endSaleDate': endSaleDate.toIso8601String(),
+        'beginSaleDate': beginSaleDate.toIso8601String(),
+        'slug': slug,
+        'images': images,
+        'title': title,
+        'description': description,
+        'inventoryStatus': inventoryStatus,
+        'culture': culture,
+        'color': color,
+        'canBePurchased': canBePurchased,
+        'exclusiveTo': exclusiveTo,
+        'categorySlugs': categorySlugs,
+        'alternateId': alternateId,
+        'replacementForItemId': replacementForItemId,
+        'hoverImage': hoverImage,
+        'metaDescription': metaDescription,
+        'metaTitle': metaTitle,
+        'isCommissionable': isCommissionable,
+        'excludeFrom': excludeFrom,
+        'languages': languages,
+        'qualifier': qualifier,
+        'lifeCycleStates': lifeCycleStates,
+        'offeringType': offeringType,
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Products copyWith({
+    int Function()? id,
+    int Function()? itemPrice,
+    int Function()? qtyLimit,
+    int Function()? originalItemPrice,
+    String Function()? formattedItemPrice,
+    String Function()? formattedOriginalItemPrice,
+    bool Function()? hasSalePrice,
+    DateTime Function()? launchDate,
+    DateTime Function()? endSaleDate,
+    DateTime Function()? beginSaleDate,
+    String Function()? slug,
+    List<String> Function()? images,
+    String Function()? title,
+    String Function()? description,
+    String? Function()? inventoryStatus,
+    String Function()? culture,
+    List<String> Function()? color,
+    bool Function()? canBePurchased,
+    List<String> Function()? exclusiveTo,
+    List<String> Function()? categorySlugs,
+    String? Function()? alternateId,
+    int? Function()? replacementForItemId,
+    String? Function()? hoverImage,
+    String? Function()? metaDescription,
+    String? Function()? metaTitle,
+    bool Function()? isCommissionable,
+    List<String> Function()? excludeFrom,
+    List<String> Function()? languages,
+    List<String> Function()? qualifier,
+    List<String> Function()? lifeCycleStates,
+    String Function()? offeringType,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Products._(
+    id: id?.call() ?? this.id,
+    itemPrice: itemPrice?.call() ?? this.itemPrice,
+    qtyLimit: qtyLimit?.call() ?? this.qtyLimit,
+    originalItemPrice: originalItemPrice?.call() ?? this.originalItemPrice,
+    formattedItemPrice: formattedItemPrice?.call() ?? this.formattedItemPrice,
+    formattedOriginalItemPrice:
+        formattedOriginalItemPrice?.call() ?? this.formattedOriginalItemPrice,
+    hasSalePrice: hasSalePrice?.call() ?? this.hasSalePrice,
+    launchDate: launchDate?.call() ?? this.launchDate,
+    endSaleDate: endSaleDate?.call() ?? this.endSaleDate,
+    beginSaleDate: beginSaleDate?.call() ?? this.beginSaleDate,
+    slug: slug?.call() ?? this.slug,
+    images: images?.call() ?? this.images,
+    title: title?.call() ?? this.title,
+    description: description?.call() ?? this.description,
+    inventoryStatus: inventoryStatus?.call() ?? this.inventoryStatus,
+    culture: culture?.call() ?? this.culture,
+    color: color?.call() ?? this.color,
+    canBePurchased: canBePurchased?.call() ?? this.canBePurchased,
+    exclusiveTo: exclusiveTo?.call() ?? this.exclusiveTo,
+    categorySlugs: categorySlugs?.call() ?? this.categorySlugs,
+    alternateId: alternateId?.call() ?? this.alternateId,
+    replacementForItemId:
+        replacementForItemId?.call() ?? this.replacementForItemId,
+    hoverImage: hoverImage?.call() ?? this.hoverImage,
+    metaDescription: metaDescription?.call() ?? this.metaDescription,
+    metaTitle: metaTitle?.call() ?? this.metaTitle,
+    isCommissionable: isCommissionable?.call() ?? this.isCommissionable,
+    excludeFrom: excludeFrom?.call() ?? this.excludeFrom,
+    languages: languages?.call() ?? this.languages,
+    qualifier: qualifier?.call() ?? this.qualifier,
+    lifeCycleStates: lifeCycleStates?.call() ?? this.lifeCycleStates,
+    offeringType: offeringType?.call() ?? this.offeringType,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Products &&
+      other.$id == $id &&
+      id == other.id &&
+      itemPrice == other.itemPrice &&
+      qtyLimit == other.qtyLimit &&
+      originalItemPrice == other.originalItemPrice &&
+      formattedItemPrice == other.formattedItemPrice &&
+      formattedOriginalItemPrice == other.formattedOriginalItemPrice &&
+      hasSalePrice == other.hasSalePrice &&
+      launchDate == other.launchDate &&
+      endSaleDate == other.endSaleDate &&
+      beginSaleDate == other.beginSaleDate &&
+      slug == other.slug &&
+      _eq(images, other.images) &&
+      title == other.title &&
+      description == other.description &&
+      inventoryStatus == other.inventoryStatus &&
+      culture == other.culture &&
+      _eq(color, other.color) &&
+      canBePurchased == other.canBePurchased &&
+      _eq(exclusiveTo, other.exclusiveTo) &&
+      _eq(categorySlugs, other.categorySlugs) &&
+      alternateId == other.alternateId &&
+      replacementForItemId == other.replacementForItemId &&
+      hoverImage == other.hoverImage &&
+      metaDescription == other.metaDescription &&
+      metaTitle == other.metaTitle &&
+      isCommissionable == other.isCommissionable &&
+      _eq(excludeFrom, other.excludeFrom) &&
+      _eq(languages, other.languages) &&
+      _eq(qualifier, other.qualifier) &&
+      _eq(lifeCycleStates, other.lifeCycleStates) &&
+      offeringType == other.offeringType;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    id,
+    itemPrice,
+    qtyLimit,
+    originalItemPrice,
+    formattedItemPrice,
+    formattedOriginalItemPrice,
+    hasSalePrice,
+    launchDate,
+    endSaleDate,
+    beginSaleDate,
+    slug,
+    ...(images),
+    title,
+    description,
+    inventoryStatus,
+    culture,
+    ...(color),
+    canBePurchased,
+    ...(exclusiveTo),
+    ...(categorySlugs),
+    alternateId,
+    replacementForItemId,
+    hoverImage,
+    metaDescription,
+    metaTitle,
+    isCommissionable,
+    ...(excludeFrom),
+    ...(languages),
+    ...(qualifier),
+    ...(lifeCycleStates),
+    offeringType,
+  ]);
+
+  static Future<Result<(int, List<Products>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Products? last,
+    List<String>? queries,
+  }) async => _client.page<Products>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Products.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Products>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Products>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Products.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Products, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Products>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Products.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Products, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Products>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Products.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Products, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Products>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Products.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class ProductKeys extends AppwriteModel<ProductKeys> {
+  ProductKeys._({
+    required this.productKey,
+    this.userId,
+    required this.isValid,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(productKey.isNotBlank, 'productKey is blank'),
+       assert(productKey.length <= 128, 'productKey is greater than 128'),
+       assert(userId == null || userId.isNotBlank, 'userId is blank'),
+       assert(
+         userId == null || userId.length <= 128,
+         'userId is greater than 128',
+       );
+
+  factory ProductKeys({
+    required String productKey,
+    String? userId,
+    required bool isValid,
+  }) => ProductKeys._(
+    productKey: productKey,
+    userId: userId,
+    isValid: isValid,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory ProductKeys.fromAppwrite(Document doc) => ProductKeys._(
+    productKey: doc.data['productKey'],
+    userId: doc.data['userId'],
+    isValid: doc.data['isValid'],
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: 'productKeys',
+    $permissions: [],
+    databaseId: 'internal',
+    name: 'productKeys',
+    enabled: true,
+    documentSecurity: false,
+  );
+
+  final String productKey;
+
+  final String? userId;
+
+  final bool isValid;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'productKey': productKey,
+    'userId': userId,
+    'isValid': isValid,
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{'productKey': productKey, 'userId': userId, 'isValid': isValid},
+      };
+    } else if (!hasRInfo) {
+      data = {'productKey': productKey, 'userId': userId, 'isValid': isValid};
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  ProductKeys copyWith({
+    String Function()? productKey,
+    String? Function()? userId,
+    bool Function()? isValid,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => ProductKeys._(
+    productKey: productKey?.call() ?? this.productKey,
+    userId: userId?.call() ?? this.userId,
+    isValid: isValid?.call() ?? this.isValid,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProductKeys &&
+      other.$id == $id &&
+      productKey == other.productKey &&
+      userId == other.userId &&
+      isValid == other.isValid;
+
+  @override
+  int get hashCode => _hash([$id, productKey, userId, isValid]);
+
+  static Future<Result<(int, List<ProductKeys>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    ProductKeys? last,
+    List<String>? queries,
+  }) async => _client.page<ProductKeys>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: ProductKeys.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<ProductKeys>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<ProductKeys>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: ProductKeys.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<ProductKeys, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<ProductKeys>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: ProductKeys.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<ProductKeys, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<ProductKeys>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: ProductKeys.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<ProductKeys, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<ProductKeys>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: ProductKeys.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class Customers extends AppwriteModel<Customers> {
+  Customers._({
+    required this.id,
+    required this.name,
+    this.email,
+    this.phone,
+    this.street,
+    this.zip,
+    this.city,
+    this.calendarEventParticipations,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(
+         id >= -9223372036854775808,
+         'id is less than -9223372036854775808',
+       ),
+       assert(
+         id <= 9223372036854775807,
+         'id is greater than 9223372036854775807',
+       ),
+       assert(name.isNotBlank, 'name is blank'),
+       assert(name.length <= 128, 'name is greater than 128'),
+       assert(
+         email == null || email.isValidEmail,
+         'email is not a valid email',
+       ),
+       assert(phone == null || phone.isNotBlank, 'phone is blank'),
+       assert(phone == null || phone.length <= 64, 'phone is greater than 64'),
+       assert(street == null || street.isNotBlank, 'street is blank'),
+       assert(
+         street == null || street.length <= 64,
+         'street is greater than 64',
+       ),
+       assert(zip == null || zip.isNotBlank, 'zip is blank'),
+       assert(zip == null || zip.length <= 64, 'zip is greater than 64'),
+       assert(city == null || city.isNotBlank, 'city is blank'),
+       assert(city == null || city.length <= 64, 'city is greater than 64');
+
+  factory Customers({
+    required int id,
+    required String name,
+    String? email,
+    String? phone,
+    String? street,
+    String? zip,
+    String? city,
+    List<CalendarEventsParticipants>? calendarEventParticipations,
+  }) => Customers._(
+    id: id,
+    name: name,
+    email: email,
+    phone: phone,
+    street: street,
+    zip: zip,
+    city: city,
+    calendarEventParticipations: calendarEventParticipations,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Customers.fromAppwrite(Document doc) => Customers._(
+    id: doc.data['id'],
+    name: doc.data['name'],
+    email: doc.data['email'],
+    phone: doc.data['phone'],
+    street: doc.data['street'],
+    zip: doc.data['zip'],
+    city: doc.data['city'],
+    calendarEventParticipations: List<CalendarEventsParticipants>.unmodifiable(
+      doc.data['calendarEventParticipations']?.map(
+            (e) => CalendarEventsParticipants.fromAppwrite(Document.fromMap(e)),
+          ) ??
+          [],
+    ),
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcb600030f54c04f0',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'customers',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final int id;
+
+  final String name;
+
+  final String? email;
+
+  final String? phone;
+
+  final String? street;
+
+  final String? zip;
+
+  final String? city;
+
+  final List<CalendarEventsParticipants>? calendarEventParticipations;
+
+  static const Relation calendarEventParticipationsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'calendarEventParticipations',
+    relationType: RelationType.manyToOne,
+    twoWay: true,
+    twoWayKey: 'customer',
+    onDelete: RelationOnDelete.setNull,
+    side: RelationSide.child,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'street': street,
+    'zip': zip,
+    'city': city,
+    'calendarEventParticipations':
+        calendarEventParticipations?.map((e) => e.toJson()).toList(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'id': id,
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'street': street,
+          'zip': zip,
+          'city': city,
+          if (hasChildren)
+            'calendarEventParticipations':
+                calendarEventParticipations
+                    ?.map((e) => e.toAppwrite(relationLevels: children))
+                    .toList(),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'id': id,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'street': street,
+        'zip': zip,
+        'city': city,
+        if (hasChildren)
+          'calendarEventParticipations':
+              calendarEventParticipations
+                  ?.map((e) => e.toAppwrite(relationLevels: children))
+                  .toList(),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Customers copyWith({
+    int Function()? id,
+    String Function()? name,
+    String? Function()? email,
+    String? Function()? phone,
+    String? Function()? street,
+    String? Function()? zip,
+    String? Function()? city,
+    List<CalendarEventsParticipants>? Function()? calendarEventParticipations,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Customers._(
+    id: id?.call() ?? this.id,
+    name: name?.call() ?? this.name,
+    email: email?.call() ?? this.email,
+    phone: phone?.call() ?? this.phone,
+    street: street?.call() ?? this.street,
+    zip: zip?.call() ?? this.zip,
+    city: city?.call() ?? this.city,
+    calendarEventParticipations:
+        calendarEventParticipations?.call() ?? this.calendarEventParticipations,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Customers &&
+      other.$id == $id &&
+      id == other.id &&
+      name == other.name &&
+      email == other.email &&
+      phone == other.phone &&
+      street == other.street &&
+      zip == other.zip &&
+      city == other.city &&
+      calendarEventParticipations == other.calendarEventParticipations;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    id,
+    name,
+    email,
+    phone,
+    street,
+    zip,
+    city,
+    calendarEventParticipations,
+  ]);
+
+  static Future<Result<(int, List<Customers>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Customers? last,
+    List<String>? queries,
+  }) async => _client.page<Customers>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Customers.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Customers>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Customers>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Customers.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Customers, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Customers>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Customers.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Customers, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Customers>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Customers.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Customers, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Customers>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Customers.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class Invoices extends AppwriteModel<Invoices> {
+  Invoices._({
+    required this.date,
+    required this.name,
+    this.notes,
+    required this.amount,
+    required this.invoiceNumber,
+    this.order,
+    this.calendarEvent,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(date.isUtc, 'date is not UTC'),
+       assert(name.isNotBlank, 'name is blank'),
+       assert(name.length <= 64, 'name is greater than 64'),
+       assert(notes == null || notes.isNotBlank, 'notes is blank'),
+       assert(
+         notes == null || notes.length <= 256,
+         'notes is greater than 256',
+       ),
+       assert(
+         amount >= -922337203685477,
+         'amount is less than -922337203685477',
+       ),
+       assert(
+         amount <= 922337203685477,
+         'amount is greater than 922337203685477',
+       ),
+       assert(invoiceNumber.isNotBlank, 'invoiceNumber is blank'),
+       assert(invoiceNumber.length <= 9, 'invoiceNumber is greater than 9');
+
+  factory Invoices({
+    required DateTime date,
+    required String name,
+    String? notes,
+    required int amount,
+    required String invoiceNumber,
+    Orders? order,
+    CalendarEvents? calendarEvent,
+  }) => Invoices._(
+    date: date,
+    name: name,
+    notes: notes,
+    amount: amount,
+    invoiceNumber: invoiceNumber,
+    order: order,
+    calendarEvent: calendarEvent,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Invoices.fromAppwrite(Document doc) => Invoices._(
+    date: DateTime.parse(doc.data['date']),
+    name: doc.data['name'],
+    notes: doc.data['notes'],
+    amount: doc.data['amount'],
+    invoiceNumber: doc.data['invoiceNumber'],
+    order:
+        doc.data['order'] != null
+            ? Orders.fromAppwrite(Document.fromMap(doc.data['order']))
+            : null,
+    calendarEvent:
+        doc.data['calendarEvent'] != null
+            ? CalendarEvents.fromAppwrite(
+              Document.fromMap(doc.data['calendarEvent']),
+            )
+            : null,
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcbe40035299f5750',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'invoices',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final DateTime date;
+
+  final String name;
+
+  final String? notes;
+
+  final int amount;
+
+  final String invoiceNumber;
+
+  final Orders? order;
+
+  static const Relation orderRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'order',
+    relationType: RelationType.oneToOne,
+    twoWay: true,
+    twoWayKey: 'invoice',
+    onDelete: RelationOnDelete.restrict,
+    side: RelationSide.child,
+  );
+
+  final CalendarEvents? calendarEvent;
+
+  static const Relation calendarEventRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'calendarEvent',
+    relationType: RelationType.oneToOne,
+    twoWay: true,
+    twoWayKey: 'invoice',
+    onDelete: RelationOnDelete.restrict,
+    side: RelationSide.child,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String(),
+    'name': name,
+    'notes': notes,
+    'amount': amount,
+    'invoiceNumber': invoiceNumber,
+    'order': order?.toJson(),
+    'calendarEvent': calendarEvent?.toJson(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'date': date.toIso8601String(),
+          'name': name,
+          'notes': notes,
+          'amount': amount,
+          'invoiceNumber': invoiceNumber,
+          if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+          if (hasChildren)
+            'calendarEvent': calendarEvent?.toAppwrite(
+              relationLevels: children,
+            ),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'date': date.toIso8601String(),
+        'name': name,
+        'notes': notes,
+        'amount': amount,
+        'invoiceNumber': invoiceNumber,
+        if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+        if (hasChildren)
+          'calendarEvent': calendarEvent?.toAppwrite(relationLevels: children),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Invoices copyWith({
+    DateTime Function()? date,
+    String Function()? name,
+    String? Function()? notes,
+    int Function()? amount,
+    String Function()? invoiceNumber,
+    Orders? Function()? order,
+    CalendarEvents? Function()? calendarEvent,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Invoices._(
+    date: date?.call() ?? this.date,
+    name: name?.call() ?? this.name,
+    notes: notes?.call() ?? this.notes,
+    amount: amount?.call() ?? this.amount,
+    invoiceNumber: invoiceNumber?.call() ?? this.invoiceNumber,
+    order: order?.call() ?? this.order,
+    calendarEvent: calendarEvent?.call() ?? this.calendarEvent,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Invoices &&
+      other.$id == $id &&
+      date == other.date &&
+      name == other.name &&
+      notes == other.notes &&
+      amount == other.amount &&
+      invoiceNumber == other.invoiceNumber &&
+      order == other.order &&
+      calendarEvent == other.calendarEvent;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    date,
+    name,
+    notes,
+    amount,
+    invoiceNumber,
+    order,
+    calendarEvent,
+  ]);
+
+  static Future<Result<(int, List<Invoices>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Invoices? last,
+    List<String>? queries,
+  }) async => _client.page<Invoices>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Invoices.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Invoices>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Invoices>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Invoices.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Invoices, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Invoices>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Invoices.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Invoices, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Invoices>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Invoices.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Invoices, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Invoices>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Invoices.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class Orders extends AppwriteModel<Orders> {
+  Orders._({
+    required this.date,
+    required this.customerId,
+    required this.customerName,
+    this.street,
+    this.zip,
+    this.city,
+    this.invoice,
+    this.products,
+    this.coupons,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(date.isUtc, 'date is not UTC'),
+       assert(customerId >= 1, 'customerId is less than 1'),
+       assert(
+         customerId <= 9223372036854775807,
+         'customerId is greater than 9223372036854775807',
+       ),
+       assert(customerName.isNotBlank, 'customerName is blank'),
+       assert(customerName.length <= 128, 'customerName is greater than 128'),
+       assert(street == null || street.isNotBlank, 'street is blank'),
+       assert(
+         street == null || street.length <= 64,
+         'street is greater than 64',
+       ),
+       assert(zip == null || zip.isNotBlank, 'zip is blank'),
+       assert(zip == null || zip.length <= 64, 'zip is greater than 64'),
+       assert(city == null || city.isNotBlank, 'city is blank'),
+       assert(city == null || city.length <= 64, 'city is greater than 64');
+
+  factory Orders({
+    required DateTime date,
+    required int customerId,
+    required String customerName,
+    String? street,
+    String? zip,
+    String? city,
+    Invoices? invoice,
+    List<OrderProducts>? products,
+    List<OrderCoupons>? coupons,
+  }) => Orders._(
+    date: date,
+    customerId: customerId,
+    customerName: customerName,
+    street: street,
+    zip: zip,
+    city: city,
+    invoice: invoice,
+    products: products,
+    coupons: coupons,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Orders.fromAppwrite(Document doc) => Orders._(
+    date: DateTime.parse(doc.data['date']),
+    customerId: doc.data['customerId'],
+    customerName: doc.data['customerName'],
+    street: doc.data['street'],
+    zip: doc.data['zip'],
+    city: doc.data['city'],
+    invoice:
+        doc.data['invoice'] != null
+            ? Invoices.fromAppwrite(Document.fromMap(doc.data['invoice']))
+            : null,
+    products: List<OrderProducts>.unmodifiable(
+      doc.data['products']?.map(
+            (e) => OrderProducts.fromAppwrite(Document.fromMap(e)),
+          ) ??
+          [],
+    ),
+    coupons: List<OrderCoupons>.unmodifiable(
+      doc.data['coupons']?.map(
+            (e) => OrderCoupons.fromAppwrite(Document.fromMap(e)),
+          ) ??
+          [],
+    ),
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcca5001880d288b0',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'orders',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final DateTime date;
+
+  final int customerId;
+
+  final String customerName;
+
+  final String? street;
+
+  final String? zip;
+
+  final String? city;
+
+  final Invoices? invoice;
+
+  static const Relation invoiceRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'invoice',
+    relationType: RelationType.oneToOne,
+    twoWay: true,
+    twoWayKey: 'order',
+    onDelete: RelationOnDelete.restrict,
+    side: RelationSide.parent,
+  );
+
+  final List<OrderProducts>? products;
+
+  static const Relation productsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'products',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'order',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.parent,
+  );
+
+  final List<OrderCoupons>? coupons;
+
+  static const Relation couponsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'coupons',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'order',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.parent,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String(),
+    'customerId': customerId,
+    'customerName': customerName,
+    'street': street,
+    'zip': zip,
+    'city': city,
+    'invoice': invoice?.toJson(),
+    'products': products?.map((e) => e.toJson()).toList(),
+    'coupons': coupons?.map((e) => e.toJson()).toList(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'date': date.toIso8601String(),
+          'customerId': customerId,
+          'customerName': customerName,
+          'street': street,
+          'zip': zip,
+          'city': city,
+          if (hasChildren)
+            'invoice': invoice?.toAppwrite(relationLevels: children),
+          if (hasChildren)
+            'products':
+                products
+                    ?.map((e) => e.toAppwrite(relationLevels: children))
+                    .toList(),
+          if (hasChildren)
+            'coupons':
+                coupons
+                    ?.map((e) => e.toAppwrite(relationLevels: children))
+                    .toList(),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'date': date.toIso8601String(),
+        'customerId': customerId,
+        'customerName': customerName,
+        'street': street,
+        'zip': zip,
+        'city': city,
+        if (hasChildren)
+          'invoice': invoice?.toAppwrite(relationLevels: children),
+        if (hasChildren)
+          'products':
+              products
+                  ?.map((e) => e.toAppwrite(relationLevels: children))
+                  .toList(),
+        if (hasChildren)
+          'coupons':
+              coupons
+                  ?.map((e) => e.toAppwrite(relationLevels: children))
+                  .toList(),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Orders copyWith({
+    DateTime Function()? date,
+    int Function()? customerId,
+    String Function()? customerName,
+    String? Function()? street,
+    String? Function()? zip,
+    String? Function()? city,
+    Invoices? Function()? invoice,
+    List<OrderProducts>? Function()? products,
+    List<OrderCoupons>? Function()? coupons,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Orders._(
+    date: date?.call() ?? this.date,
+    customerId: customerId?.call() ?? this.customerId,
+    customerName: customerName?.call() ?? this.customerName,
+    street: street?.call() ?? this.street,
+    zip: zip?.call() ?? this.zip,
+    city: city?.call() ?? this.city,
+    invoice: invoice?.call() ?? this.invoice,
+    products: products?.call() ?? this.products,
+    coupons: coupons?.call() ?? this.coupons,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Orders &&
+      other.$id == $id &&
+      date == other.date &&
+      customerId == other.customerId &&
+      customerName == other.customerName &&
+      street == other.street &&
+      zip == other.zip &&
+      city == other.city &&
+      invoice == other.invoice &&
+      products == other.products &&
+      coupons == other.coupons;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    date,
+    customerId,
+    customerName,
+    street,
+    zip,
+    city,
+    invoice,
+    products,
+    coupons,
+  ]);
+
+  static Future<Result<(int, List<Orders>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Orders? last,
+    List<String>? queries,
+  }) async => _client.page<Orders>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Orders.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Orders>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Orders>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Orders.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Orders, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Orders>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Orders.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Orders, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Orders>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Orders.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Orders, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Orders>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Orders.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class OrderProducts extends AppwriteModel<OrderProducts> {
+  OrderProducts._({
+    this.order,
+    required this.id,
+    required this.title,
+    required this.price,
+    required this.quantity,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(
+         id >= -9223372036854775808,
+         'id is less than -9223372036854775808',
+       ),
+       assert(
+         id <= 9223372036854775807,
+         'id is greater than 9223372036854775807',
+       ),
+       assert(title.isNotBlank, 'title is blank'),
+       assert(title.length <= 1024, 'title is greater than 1024'),
+       assert(
+         price >= -9223372036854775808,
+         'price is less than -9223372036854775808',
+       ),
+       assert(
+         price <= 9223372036854775807,
+         'price is greater than 9223372036854775807',
+       ),
+       assert(quantity >= 1, 'quantity is less than 1'),
+       assert(
+         quantity <= 9223372036854775807,
+         'quantity is greater than 9223372036854775807',
+       );
+
+  factory OrderProducts({
+    Orders? order,
+    required int id,
+    required String title,
+    required int price,
+    required int quantity,
+  }) => OrderProducts._(
+    order: order,
+    id: id,
+    title: title,
+    price: price,
+    quantity: quantity,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory OrderProducts.fromAppwrite(Document doc) => OrderProducts._(
+    order:
+        doc.data['order'] != null
+            ? Orders.fromAppwrite(Document.fromMap(doc.data['order']))
+            : null,
+    id: doc.data['id'],
+    title: doc.data['title'],
+    price: doc.data['price'],
+    quantity: doc.data['quantity'],
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcd4b002428afc3cb',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'orderProducts',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final Orders? order;
+
+  static const Relation orderRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'order',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'products',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.child,
+  );
+
+  final int id;
+
+  final String title;
+
+  final int price;
+
+  final int quantity;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'order': order?.toJson(),
+    'id': id,
+    'title': title,
+    'price': price,
+    'quantity': quantity,
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+          'id': id,
+          'title': title,
+          'price': price,
+          'quantity': quantity,
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+        'id': id,
+        'title': title,
+        'price': price,
+        'quantity': quantity,
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  OrderProducts copyWith({
+    Orders? Function()? order,
+    int Function()? id,
+    String Function()? title,
+    int Function()? price,
+    int Function()? quantity,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => OrderProducts._(
+    order: order?.call() ?? this.order,
+    id: id?.call() ?? this.id,
+    title: title?.call() ?? this.title,
+    price: price?.call() ?? this.price,
+    quantity: quantity?.call() ?? this.quantity,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is OrderProducts &&
+      other.$id == $id &&
+      order == other.order &&
+      id == other.id &&
+      title == other.title &&
+      price == other.price &&
+      quantity == other.quantity;
+
+  @override
+  int get hashCode => _hash([$id, order, id, title, price, quantity]);
+
+  static Future<Result<(int, List<OrderProducts>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    OrderProducts? last,
+    List<String>? queries,
+  }) async => _client.page<OrderProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderProducts.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<OrderProducts>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<OrderProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderProducts.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<OrderProducts, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<OrderProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderProducts.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<OrderProducts, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<OrderProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderProducts.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<OrderProducts, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<OrderProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderProducts.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class Expenses extends AppwriteModel<Expenses> {
+  Expenses._({
+    required this.expenseNumber,
+    required this.date,
+    required this.name,
+    this.notes,
+    required this.amount,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(expenseNumber.isNotBlank, 'expenseNumber is blank'),
+       assert(expenseNumber.length <= 8, 'expenseNumber is greater than 8'),
+       assert(date.isUtc, 'date is not UTC'),
+       assert(name.isNotBlank, 'name is blank'),
+       assert(name.length <= 64, 'name is greater than 64'),
+       assert(notes == null || notes.isNotBlank, 'notes is blank'),
+       assert(
+         notes == null || notes.length <= 256,
+         'notes is greater than 256',
+       ),
+       assert(
+         amount >= -9223372036854775808,
+         'amount is less than -9223372036854775808',
+       ),
+       assert(
+         amount <= 9223372036854775807,
+         'amount is greater than 9223372036854775807',
+       );
+
+  factory Expenses({
+    required String expenseNumber,
+    required DateTime date,
+    required String name,
+    String? notes,
+    required int amount,
+  }) => Expenses._(
+    expenseNumber: expenseNumber,
+    date: date,
+    name: name,
+    notes: notes,
+    amount: amount,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Expenses.fromAppwrite(Document doc) => Expenses._(
+    expenseNumber: doc.data['expenseNumber'],
+    date: DateTime.parse(doc.data['date']),
+    name: doc.data['name'],
+    notes: doc.data['notes'],
+    amount: doc.data['amount'],
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcd940039b63e4d29',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'expenses',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final String expenseNumber;
+
+  final DateTime date;
+
+  final String name;
+
+  final String? notes;
+
+  final int amount;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'expenseNumber': expenseNumber,
+    'date': date.toIso8601String(),
+    'name': name,
+    'notes': notes,
+    'amount': amount,
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'expenseNumber': expenseNumber,
+          'date': date.toIso8601String(),
+          'name': name,
+          'notes': notes,
+          'amount': amount,
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'expenseNumber': expenseNumber,
+        'date': date.toIso8601String(),
+        'name': name,
+        'notes': notes,
+        'amount': amount,
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Expenses copyWith({
+    String Function()? expenseNumber,
+    DateTime Function()? date,
+    String Function()? name,
+    String? Function()? notes,
+    int Function()? amount,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Expenses._(
+    expenseNumber: expenseNumber?.call() ?? this.expenseNumber,
+    date: date?.call() ?? this.date,
+    name: name?.call() ?? this.name,
+    notes: notes?.call() ?? this.notes,
+    amount: amount?.call() ?? this.amount,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Expenses &&
+      other.$id == $id &&
+      expenseNumber == other.expenseNumber &&
+      date == other.date &&
+      name == other.name &&
+      notes == other.notes &&
+      amount == other.amount;
+
+  @override
+  int get hashCode => _hash([$id, expenseNumber, date, name, notes, amount]);
+
+  static Future<Result<(int, List<Expenses>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Expenses? last,
+    List<String>? queries,
+  }) async => _client.page<Expenses>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Expenses.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Expenses>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Expenses>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Expenses.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Expenses, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Expenses>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Expenses.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Expenses, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Expenses>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Expenses.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Expenses, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Expenses>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Expenses.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+enum CalendarEventsType { plain, withParticipants }
+
+@immutable
+class CalendarEvents extends AppwriteModel<CalendarEvents> {
+  CalendarEvents._({
+    required this.title,
+    this.description,
+    required this.start,
+    required this.end,
+    required this.type,
+    this.amount,
+    this.participants,
+    this.invoice,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(title.isNotBlank, 'title is blank'),
+       assert(title.length <= 64, 'title is greater than 64'),
+       assert(
+         description == null || description.isNotBlank,
+         'description is blank',
+       ),
+       assert(
+         description == null || description.length <= 1024,
+         'description is greater than 1024',
+       ),
+       assert(start.isUtc, 'start is not UTC'),
+       assert(end.isUtc, 'end is not UTC'),
+       assert(
+         amount == null || amount >= -9223372036854775808,
+         'amount is less than -9223372036854775808',
+       ),
+       assert(
+         amount == null || amount <= 9223372036854775807,
+         'amount is greater than 9223372036854775807',
+       );
+
+  factory CalendarEvents({
+    required String title,
+    String? description,
+    required DateTime start,
+    required DateTime end,
+    required CalendarEventsType type,
+    int? amount,
+    List<CalendarEventsParticipants>? participants,
+    Invoices? invoice,
+  }) => CalendarEvents._(
+    title: title,
+    description: description,
+    start: start,
+    end: end,
+    type: type,
+    amount: amount,
+    participants: participants,
+    invoice: invoice,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory CalendarEvents.fromAppwrite(Document doc) => CalendarEvents._(
+    title: doc.data['title'],
+    description: doc.data['description'],
+    start: DateTime.parse(doc.data['start']),
+    end: DateTime.parse(doc.data['end']),
+    type: CalendarEventsType.values.byName(doc.data['type']),
+    amount: doc.data['amount'],
+    participants: List<CalendarEventsParticipants>.unmodifiable(
+      doc.data['participants']?.map(
+            (e) => CalendarEventsParticipants.fromAppwrite(Document.fromMap(e)),
+          ) ??
+          [],
+    ),
+    invoice:
+        doc.data['invoice'] != null
+            ? Invoices.fromAppwrite(Document.fromMap(doc.data['invoice']))
+            : null,
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bce09001905da8109',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'calendarEvents',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final String title;
+
+  final String? description;
+
+  final DateTime start;
+
+  final DateTime end;
+
+  final CalendarEventsType type;
+
+  final int? amount;
+
+  final List<CalendarEventsParticipants>? participants;
+
+  static const Relation participantsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'participants',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'event',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.parent,
+  );
+
+  final Invoices? invoice;
+
+  static const Relation invoiceRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'invoice',
+    relationType: RelationType.oneToOne,
+    twoWay: true,
+    twoWayKey: 'calendarEvent',
+    onDelete: RelationOnDelete.restrict,
+    side: RelationSide.parent,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'description': description,
+    'start': start.toIso8601String(),
+    'end': end.toIso8601String(),
+    'type': type.name,
+    'amount': amount,
+    'participants': participants?.map((e) => e.toJson()).toList(),
+    'invoice': invoice?.toJson(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'title': title,
+          'description': description,
+          'start': start.toIso8601String(),
+          'end': end.toIso8601String(),
+          'type': type.name,
+          'amount': amount,
+          if (hasChildren)
+            'participants':
+                participants
+                    ?.map((e) => e.toAppwrite(relationLevels: children))
+                    .toList(),
+          if (hasChildren)
+            'invoice': invoice?.toAppwrite(relationLevels: children),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'title': title,
+        'description': description,
+        'start': start.toIso8601String(),
+        'end': end.toIso8601String(),
+        'type': type.name,
+        'amount': amount,
+        if (hasChildren)
+          'participants':
+              participants
+                  ?.map((e) => e.toAppwrite(relationLevels: children))
+                  .toList(),
+        if (hasChildren)
+          'invoice': invoice?.toAppwrite(relationLevels: children),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  CalendarEvents copyWith({
+    String Function()? title,
+    String? Function()? description,
+    DateTime Function()? start,
+    DateTime Function()? end,
+    CalendarEventsType Function()? type,
+    int? Function()? amount,
+    List<CalendarEventsParticipants>? Function()? participants,
+    Invoices? Function()? invoice,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => CalendarEvents._(
+    title: title?.call() ?? this.title,
+    description: description?.call() ?? this.description,
+    start: start?.call() ?? this.start,
+    end: end?.call() ?? this.end,
+    type: type?.call() ?? this.type,
+    amount: amount?.call() ?? this.amount,
+    participants: participants?.call() ?? this.participants,
+    invoice: invoice?.call() ?? this.invoice,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CalendarEvents &&
+      other.$id == $id &&
+      title == other.title &&
+      description == other.description &&
+      start == other.start &&
+      end == other.end &&
+      type == other.type &&
+      amount == other.amount &&
+      participants == other.participants &&
+      invoice == other.invoice;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    title,
+    description,
+    start,
+    end,
+    type,
+    amount,
+    participants,
+    invoice,
+  ]);
+
+  static Future<Result<(int, List<CalendarEvents>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    CalendarEvents? last,
+    List<String>? queries,
+  }) async => _client.page<CalendarEvents>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEvents.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<CalendarEvents>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<CalendarEvents>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEvents.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<CalendarEvents, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<CalendarEvents>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEvents.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<CalendarEvents, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<CalendarEvents>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEvents.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<CalendarEvents, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<CalendarEvents>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEvents.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+enum CalendarEventsParticipantsStatus { accepted, declined, pending }
+
+@immutable
+class CalendarEventsParticipants
+    extends AppwriteModel<CalendarEventsParticipants> {
+  const CalendarEventsParticipants._({
+    this.event,
+    required this.status,
+    this.customer,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  });
+
+  factory CalendarEventsParticipants({
+    CalendarEvents? event,
+    required CalendarEventsParticipantsStatus status,
+    Customers? customer,
+  }) => CalendarEventsParticipants._(
+    event: event,
+    status: status,
+    customer: customer,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory CalendarEventsParticipants.fromAppwrite(
+    Document doc,
+  ) => CalendarEventsParticipants._(
+    event:
+        doc.data['event'] != null
+            ? CalendarEvents.fromAppwrite(Document.fromMap(doc.data['event']))
+            : null,
+    status: CalendarEventsParticipantsStatus.values.byName(doc.data['status']),
+    customer:
+        doc.data['customer'] != null
+            ? Customers.fromAppwrite(Document.fromMap(doc.data['customer']))
+            : null,
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcebb0002c448aa73',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'calendarEventsParticipants',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final CalendarEvents? event;
+
+  static const Relation eventRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'event',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'participants',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.child,
+  );
+
+  final CalendarEventsParticipantsStatus status;
+
+  final Customers? customer;
+
+  static const Relation customerRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'customer',
+    relationType: RelationType.manyToOne,
+    twoWay: true,
+    twoWayKey: 'calendarEventParticipations',
+    onDelete: RelationOnDelete.setNull,
+    side: RelationSide.parent,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'event': event?.toJson(),
+    'status': status.name,
+    'customer': customer?.toJson(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          if (hasChildren) 'event': event?.toAppwrite(relationLevels: children),
+          'status': status.name,
+          if (hasChildren)
+            'customer': customer?.toAppwrite(relationLevels: children),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        if (hasChildren) 'event': event?.toAppwrite(relationLevels: children),
+        'status': status.name,
+        if (hasChildren)
+          'customer': customer?.toAppwrite(relationLevels: children),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  CalendarEventsParticipants copyWith({
+    CalendarEvents? Function()? event,
+    CalendarEventsParticipantsStatus Function()? status,
+    Customers? Function()? customer,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => CalendarEventsParticipants._(
+    event: event?.call() ?? this.event,
+    status: status?.call() ?? this.status,
+    customer: customer?.call() ?? this.customer,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CalendarEventsParticipants &&
+      other.$id == $id &&
+      event == other.event &&
+      status == other.status &&
+      customer == other.customer;
+
+  @override
+  int get hashCode => _hash([$id, event, status, customer]);
+
+  static Future<
+    Result<(int, List<CalendarEventsParticipants>), AppwriteException>
+  >
+  page({
+    int limit = 25,
+    int? offset,
+    CalendarEventsParticipants? last,
+    List<String>? queries,
+  }) async => _client.page<CalendarEventsParticipants>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEventsParticipants.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<CalendarEventsParticipants>), AppwriteException>>
+  list([List<String>? queries]) async =>
+      _client.list<CalendarEventsParticipants>(
+        databaseId: collectionInfo.databaseId,
+        collectionId: collectionInfo.$id,
+        fromAppwrite: CalendarEventsParticipants.fromAppwrite,
+        queries: queries,
+      );
+
+  static Future<Result<CalendarEventsParticipants, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<CalendarEventsParticipants>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEventsParticipants.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<CalendarEventsParticipants, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<CalendarEventsParticipants>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEventsParticipants.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<CalendarEventsParticipants, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<CalendarEventsParticipants>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CalendarEventsParticipants.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class OrderCoupons extends AppwriteModel<OrderCoupons> {
+  OrderCoupons._({
+    this.order,
+    required this.name,
+    required this.amount,
+    this.coupons,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(name.isNotBlank, 'name is blank'),
+       assert(name.length <= 64, 'name is greater than 64'),
+       assert(
+         amount >= -9223372036854775808,
+         'amount is less than -9223372036854775808',
+       ),
+       assert(
+         amount <= 9223372036854775807,
+         'amount is greater than 9223372036854775807',
+       );
+
+  factory OrderCoupons({
+    Orders? order,
+    required String name,
+    required int amount,
+    Coupons? coupons,
+  }) => OrderCoupons._(
+    order: order,
+    name: name,
+    amount: amount,
+    coupons: coupons,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory OrderCoupons.fromAppwrite(Document doc) => OrderCoupons._(
+    order:
+        doc.data['order'] != null
+            ? Orders.fromAppwrite(Document.fromMap(doc.data['order']))
+            : null,
+    name: doc.data['name'],
+    amount: doc.data['amount'],
+    coupons:
+        doc.data['coupons'] != null
+            ? Coupons.fromAppwrite(Document.fromMap(doc.data['coupons']))
+            : null,
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '672bcf00000075632fd4',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'orderCoupons',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final Orders? order;
+
+  static const Relation orderRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'order',
+    relationType: RelationType.oneToMany,
+    twoWay: true,
+    twoWayKey: 'coupons',
+    onDelete: RelationOnDelete.cascade,
+    side: RelationSide.child,
+  );
+
+  final String name;
+
+  final int amount;
+
+  final Coupons? coupons;
+
+  static const Relation couponsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'coupons',
+    relationType: RelationType.manyToOne,
+    twoWay: true,
+    twoWayKey: 'orderCoupons',
+    onDelete: RelationOnDelete.setNull,
+    side: RelationSide.parent,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'order': order?.toJson(),
+    'name': name,
+    'amount': amount,
+    'coupons': coupons?.toJson(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+          'name': name,
+          'amount': amount,
+          if (hasChildren)
+            'coupons': coupons?.toAppwrite(relationLevels: children),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        if (hasChildren) 'order': order?.toAppwrite(relationLevels: children),
+        'name': name,
+        'amount': amount,
+        if (hasChildren)
+          'coupons': coupons?.toAppwrite(relationLevels: children),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  OrderCoupons copyWith({
+    Orders? Function()? order,
+    String Function()? name,
+    int Function()? amount,
+    Coupons? Function()? coupons,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => OrderCoupons._(
+    order: order?.call() ?? this.order,
+    name: name?.call() ?? this.name,
+    amount: amount?.call() ?? this.amount,
+    coupons: coupons?.call() ?? this.coupons,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is OrderCoupons &&
+      other.$id == $id &&
+      order == other.order &&
+      name == other.name &&
+      amount == other.amount &&
+      coupons == other.coupons;
+
+  @override
+  int get hashCode => _hash([$id, order, name, amount, coupons]);
+
+  static Future<Result<(int, List<OrderCoupons>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    OrderCoupons? last,
+    List<String>? queries,
+  }) async => _client.page<OrderCoupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderCoupons.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<OrderCoupons>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<OrderCoupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderCoupons.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<OrderCoupons, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<OrderCoupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderCoupons.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<OrderCoupons, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<OrderCoupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderCoupons.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<OrderCoupons, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<OrderCoupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: OrderCoupons.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class CustomProducts extends AppwriteModel<CustomProducts> {
+  CustomProducts._({
+    required this.id,
+    required this.title,
+    required this.price,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(
+         id >= -9223372036854775808,
+         'id is less than -9223372036854775808',
+       ),
+       assert(
+         id <= 9223372036854775807,
+         'id is greater than 9223372036854775807',
+       ),
+       assert(title.isNotBlank, 'title is blank'),
+       assert(title.length <= 1024, 'title is greater than 1024'),
+       assert(
+         price >= -9223372036854775808,
+         'price is less than -9223372036854775808',
+       ),
+       assert(
+         price <= 9223372036854775807,
+         'price is greater than 9223372036854775807',
+       );
+
+  factory CustomProducts({
+    required int id,
+    required String title,
+    required int price,
+  }) => CustomProducts._(
+    id: id,
+    title: title,
+    price: price,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory CustomProducts.fromAppwrite(Document doc) => CustomProducts._(
+    id: doc.data['id'],
+    title: doc.data['title'],
+    price: doc.data['price'],
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '67634d8600001ca71de4',
+    $permissions: [],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'customProducts',
+    enabled: true,
+    documentSecurity: false,
+  );
+
+  final int id;
+
+  final String title;
+
+  final int price;
+
+  @override
+  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'price': price};
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{'id': id, 'title': title, 'price': price},
+      };
+    } else if (!hasRInfo) {
+      data = {'id': id, 'title': title, 'price': price};
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  CustomProducts copyWith({
+    int Function()? id,
+    String Function()? title,
+    int Function()? price,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => CustomProducts._(
+    id: id?.call() ?? this.id,
+    title: title?.call() ?? this.title,
+    price: price?.call() ?? this.price,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is CustomProducts &&
+      other.$id == $id &&
+      id == other.id &&
+      title == other.title &&
+      price == other.price;
+
+  @override
+  int get hashCode => _hash([$id, id, title, price]);
+
+  static Future<Result<(int, List<CustomProducts>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    CustomProducts? last,
+    List<String>? queries,
+  }) async => _client.page<CustomProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CustomProducts.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<CustomProducts>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<CustomProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CustomProducts.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<CustomProducts, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<CustomProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CustomProducts.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<CustomProducts, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<CustomProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CustomProducts.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<CustomProducts, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<CustomProducts>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: CustomProducts.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+enum PrintTemplatesType { invoiceWithOrder, invoice, expense, monthlyReport }
+
+@immutable
+class PrintTemplates extends AppwriteModel<PrintTemplates> {
+  PrintTemplates._({
+    required this.content,
+    required this.name,
+    this.filename,
+    required this.type,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(content.isNotBlank, 'content is blank'),
+       assert(content.length <= 65536, 'content is greater than 65536'),
+       assert(name.isNotBlank, 'name is blank'),
+       assert(name.length <= 128, 'name is greater than 128'),
+       assert(filename == null || filename.isNotBlank, 'filename is blank'),
+       assert(
+         filename == null || filename.length <= 128,
+         'filename is greater than 128',
+       );
+
+  factory PrintTemplates({
+    required String content,
+    required String name,
+    String? filename,
+    required List<PrintTemplatesType> type,
+  }) => PrintTemplates._(
+    content: content,
+    name: name,
+    filename: filename,
+    type: type,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory PrintTemplates.fromAppwrite(Document doc) => PrintTemplates._(
+    content: doc.data['content'],
+    name: doc.data['name'],
+    filename: doc.data['filename'],
+    type: List<PrintTemplatesType>.unmodifiable(
+      doc.data['type']?.map((e) => PrintTemplatesType.values.byName(e)) ?? [],
+    ),
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '67b28bbd0013cd7eff10',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'printTemplates',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final String content;
+
+  final String name;
+
+  final String? filename;
+
+  final List<PrintTemplatesType> type;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'content': content,
+    'name': name,
+    'filename': filename,
+    'type': type.map((e) => e.name).toList(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'content': content,
+          'name': name,
+          'filename': filename,
+          'type': type.map((e) => e.name).toList(),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'content': content,
+        'name': name,
+        'filename': filename,
+        'type': type.map((e) => e.name).toList(),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  PrintTemplates copyWith({
+    String Function()? content,
+    String Function()? name,
+    String? Function()? filename,
+    List<PrintTemplatesType>? Function()? type,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => PrintTemplates._(
+    content: content?.call() ?? this.content,
+    name: name?.call() ?? this.name,
+    filename: filename?.call() ?? this.filename,
+    type: type?.call() ?? this.type,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is PrintTemplates &&
+      other.$id == $id &&
+      content == other.content &&
+      name == other.name &&
+      filename == other.filename &&
+      _eq(type, other.type);
+
+  @override
+  int get hashCode => _hash([$id, content, name, filename, ...(type)]);
+
+  static Future<Result<(int, List<PrintTemplates>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    PrintTemplates? last,
+    List<String>? queries,
+  }) async => _client.page<PrintTemplates>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: PrintTemplates.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<PrintTemplates>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<PrintTemplates>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: PrintTemplates.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<PrintTemplates, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<PrintTemplates>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: PrintTemplates.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<PrintTemplates, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<PrintTemplates>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: PrintTemplates.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<PrintTemplates, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<PrintTemplates>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: PrintTemplates.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}
+
+@immutable
+class Coupons extends AppwriteModel<Coupons> {
+  Coupons._({
+    required this.code,
+    required this.creationDate,
+    this.lastChangeDate,
+    required this.initialValue,
+    required this.remainingValue,
+    this.orderCoupons,
+    required super.$id,
+    required super.$collectionId,
+    required super.$databaseId,
+    required super.$createdAt,
+    required super.$updatedAt,
+    required super.$permissions,
+  }) : assert(code.isNotBlank, 'code is blank'),
+       assert(code.length <= 256, 'code is greater than 256'),
+       assert(creationDate.isUtc, 'creationDate is not UTC'),
+       assert(
+         lastChangeDate == null || lastChangeDate.isUtc,
+         'lastChangeDate is not UTC',
+       ),
+       assert(
+         initialValue >= -9223372036854775808,
+         'initialValue is less than -9223372036854775808',
+       ),
+       assert(
+         initialValue <= 9223372036854775807,
+         'initialValue is greater than 9223372036854775807',
+       ),
+       assert(
+         remainingValue >= -9223372036854775808,
+         'remainingValue is less than -9223372036854775808',
+       ),
+       assert(
+         remainingValue <= 9223372036854775807,
+         'remainingValue is greater than 9223372036854775807',
+       );
+
+  factory Coupons({
+    required String code,
+    required DateTime creationDate,
+    DateTime? lastChangeDate,
+    required int initialValue,
+    required int remainingValue,
+    List<OrderCoupons>? orderCoupons,
+  }) => Coupons._(
+    code: code,
+    creationDate: creationDate,
+    lastChangeDate: lastChangeDate,
+    initialValue: initialValue,
+    remainingValue: remainingValue,
+    orderCoupons: orderCoupons,
+    $id: ID.unique(),
+    $collectionId: collectionInfo.$id,
+    $databaseId: collectionInfo.databaseId,
+    $createdAt: DateTime.now().toUtc(),
+    $updatedAt: DateTime.now().toUtc(),
+    $permissions: collectionInfo.$permissions,
+  );
+
+  factory Coupons.fromAppwrite(Document doc) => Coupons._(
+    code: doc.data['code'],
+    creationDate: DateTime.parse(doc.data['creationDate']),
+    lastChangeDate:
+        doc.data['lastChangeDate'] != null
+            ? DateTime.parse(doc.data['lastChangeDate'])
+            : null,
+    initialValue: doc.data['initialValue'],
+    remainingValue: doc.data['remainingValue'],
+    orderCoupons: List<OrderCoupons>.unmodifiable(
+      doc.data['orderCoupons']?.map(
+            (e) => OrderCoupons.fromAppwrite(Document.fromMap(e)),
+          ) ??
+          [],
+    ),
+    $id: doc.$id,
+    $collectionId: doc.$collectionId,
+    $databaseId: doc.$databaseId,
+    $createdAt: DateTime.parse(doc.$createdAt),
+    $updatedAt: DateTime.parse(doc.$updatedAt),
+    $permissions: toList(doc.$permissions),
+  );
+
+  static const CollectionInfo collectionInfo = CollectionInfo(
+    $id: '6804dc0d0032aa687528',
+    $permissions: ['create("label:validProductKey")'],
+    databaseId: '672bcb590033b5b2780a',
+    name: 'coupons',
+    enabled: true,
+    documentSecurity: true,
+  );
+
+  final String code;
+
+  final DateTime creationDate;
+
+  final DateTime? lastChangeDate;
+
+  final int initialValue;
+
+  final int remainingValue;
+
+  final List<OrderCoupons>? orderCoupons;
+
+  static const Relation orderCouponsRelation = Relation(
+    required: false,
+    array: false,
+    relatedCollection: 'orderCoupons',
+    relationType: RelationType.manyToOne,
+    twoWay: true,
+    twoWayKey: 'coupons',
+    onDelete: RelationOnDelete.setNull,
+    side: RelationSide.child,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'code': code,
+    'creationDate': creationDate.toIso8601String(),
+    'lastChangeDate': lastChangeDate?.toIso8601String(),
+    'initialValue': initialValue,
+    'remainingValue': remainingValue,
+    'orderCoupons': orderCoupons?.map((e) => e.toJson()).toList(),
+  };
+
+  @override
+  dynamic toAppwrite({List<RLevel> relationLevels = const []}) {
+    final children =
+        relationLevels.isNotEmpty ? relationLevels.sublist(1) : null;
+    final hasChildren = children != null && children.isNotEmpty;
+    final rInfo = relationLevels.isNotEmpty ? relationLevels.first : null;
+    final hasRInfo = rInfo != null;
+    var data = <String, dynamic>{};
+    if (hasRInfo && rInfo.includeId) data['\$id'] = $id;
+    if (hasRInfo && rInfo.includeData) {
+      data = {
+        ...data,
+        ...{
+          'code': code,
+          'creationDate': creationDate.toIso8601String(),
+          'lastChangeDate': lastChangeDate?.toIso8601String(),
+          'initialValue': initialValue,
+          'remainingValue': remainingValue,
+          if (hasChildren)
+            'orderCoupons':
+                orderCoupons
+                    ?.map((e) => e.toAppwrite(relationLevels: children))
+                    .toList(),
+        },
+      };
+    } else if (!hasRInfo) {
+      data = {
+        'code': code,
+        'creationDate': creationDate.toIso8601String(),
+        'lastChangeDate': lastChangeDate?.toIso8601String(),
+        'initialValue': initialValue,
+        'remainingValue': remainingValue,
+        if (hasChildren)
+          'orderCoupons':
+              orderCoupons
+                  ?.map((e) => e.toAppwrite(relationLevels: children))
+                  .toList(),
+      };
+    }
+    if (hasRInfo && rInfo.includePermissions) {
+      data['\$permissions'] = $permissions;
+    }
+    if (hasRInfo &&
+        rInfo.includeId &&
+        !rInfo.includeData &&
+        !rInfo.includePermissions) {
+      return $id;
+    } else {
+      return data;
+    }
+  }
+
+  @override
+  Coupons copyWith({
+    String Function()? code,
+    DateTime Function()? creationDate,
+    DateTime? Function()? lastChangeDate,
+    int Function()? initialValue,
+    int Function()? remainingValue,
+    List<OrderCoupons>? Function()? orderCoupons,
+    String? $id,
+    String? $collectionId,
+    String? $databaseId,
+    DateTime? $createdAt,
+    DateTime? $updatedAt,
+    List<String>? $permissions,
+  }) => Coupons._(
+    code: code?.call() ?? this.code,
+    creationDate: creationDate?.call() ?? this.creationDate,
+    lastChangeDate: lastChangeDate?.call() ?? this.lastChangeDate,
+    initialValue: initialValue?.call() ?? this.initialValue,
+    remainingValue: remainingValue?.call() ?? this.remainingValue,
+    orderCoupons: orderCoupons?.call() ?? this.orderCoupons,
+    $id: $id ?? this.$id,
+    $collectionId: $collectionId ?? this.$collectionId,
+    $databaseId: $databaseId ?? this.$databaseId,
+    $createdAt: $createdAt ?? this.$createdAt,
+    $updatedAt: $updatedAt ?? this.$updatedAt,
+    $permissions: $permissions ?? this.$permissions,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is Coupons &&
+      other.$id == $id &&
+      code == other.code &&
+      creationDate == other.creationDate &&
+      lastChangeDate == other.lastChangeDate &&
+      initialValue == other.initialValue &&
+      remainingValue == other.remainingValue &&
+      orderCoupons == other.orderCoupons;
+
+  @override
+  int get hashCode => _hash([
+    $id,
+    code,
+    creationDate,
+    lastChangeDate,
+    initialValue,
+    remainingValue,
+    orderCoupons,
+  ]);
+
+  static Future<Result<(int, List<Coupons>), AppwriteException>> page({
+    int limit = 25,
+    int? offset,
+    Coupons? last,
+    List<String>? queries,
+  }) async => _client.page<Coupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Coupons.fromAppwrite,
+    limit: limit,
+    offset: offset,
+    last: last,
+    queries: queries,
+  );
+
+  Future<Result<(int, List<Coupons>), AppwriteException>> list([
+    List<String>? queries,
+  ]) async => _client.list<Coupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Coupons.fromAppwrite,
+    queries: queries,
+  );
+
+  static Future<Result<Coupons, AppwriteException>> get(
+    String documentId, {
+    List<String>? queries,
+  }) async => _client.get<Coupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Coupons.fromAppwrite,
+    documentId: documentId,
+    queries: queries,
+  );
+
+  Future<Result<Coupons, AppwriteException>> create({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.create<Coupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Coupons.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<Coupons, AppwriteException>> update({
+    List<RLevel> relationLevels = const [],
+  }) async => _client.update<Coupons>(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    fromAppwrite: Coupons.fromAppwrite,
+    model: this,
+    relationLevels: relationLevels,
+  );
+
+  Future<Result<void, AppwriteException>> delete() async => _client.delete(
+    databaseId: collectionInfo.databaseId,
+    collectionId: collectionInfo.$id,
+    documentId: $id,
+  );
+}

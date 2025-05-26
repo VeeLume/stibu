@@ -1,0 +1,15 @@
+{
+    "servers": {
+        "appwrite - dev": {
+            "command": "uvx",
+            "args": [
+                "mcp-server-appwrite"
+            ],
+            "env": {
+                "APPWRITE_PROJECT_ID": "672be8c200098f27fd3a",
+                "APPWRITE_API_KEY": "standard_e26e4d9ea379fa67540769aaa53e833985581751db26b42b88afa203748c19c3ee9630e10aae5f849170c04d92272610d762c527683e6fc249edbc70a86153b530e8e800e64fa33b8d547b8c9161339ea3093e1c0e92d876d212b28cccec74f4c8f8c6a20f00043e1b335200a289795dcabe96ce6d2ca3d6e087a5b127973cfc",
+                "APPWRITE_ENDPOINT": "https://appwrite.vee.icu/v1"
+            }
+        }
+    }
+}
