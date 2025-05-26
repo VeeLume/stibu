@@ -23,38 +23,31 @@ class OrderListPage extends StatelessWidget {
     );
   }
 
-  Widget _addButton() {
+  Widget _addButton(BuildContext context) {
     return IconButton(
       icon: Icon(Icons.add),
       onPressed: () async {
-        // final result = await showDialog<Orders>(
-        //   context: context,
-        //   builder:
-        //       (context) => OrderInputDialog(
-        //         onOrderCreated: (order) async {
-        //           final result = await order.create();
-        //           if (result.isSuccess) {
-        //             setState(() {
-        //               _selectedOrder = result.success;
-        //             });
-        //           } else if (context.mounted) {
-        //             ScaffoldMessenger.of(context).showSnackBar(
-        //               SnackBar(
-        //                 content: Text(
-        //                   result.failure.message ?? 'Failed to create order.',
-        //                 ),
-        //               ),
-        //             );
-        //           }
-        //         },
-        //       ),
-        // );
+        final result =
+            await Orders(
+              customerId: -1,
+              customerName: '',
+              date: DateTime.now(),
+            ).create();
 
-        // if (result != null) {
-        //   setState(() {
-        //     _selectedOrder = result;
-        //   });
-        // }
+        if (result.isSuccess && context.mounted) {
+          context.navigateTo(
+            OrderDetailRoute(
+              documentId: result.success.$id,
+              order: result.success,
+            ),
+          );
+        } else if (result.isFailure && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.failure.message ?? 'Error creating order'),
+            ),
+          );
+        }
       },
     );
   }
@@ -65,7 +58,7 @@ class OrderListPage extends StatelessWidget {
     navigateToDetailPage: (order) {
       context.navigateTo(OrderDetailRoute(documentId: order.$id, order: order));
     },
-    smallLayoutActions: (_, _) => [_addButton(), _searchButton()],
+    smallLayoutActions: (_, _) => [_addButton(context), _searchButton()],
     listItemBuilder: (order, onItemSelected) {
       return ListTile(
         splashColor: Colors.transparent,
@@ -95,7 +88,7 @@ class OrderListPage extends StatelessWidget {
       );
     },
     largeLayoutLeading: (_, _) => _searchButton(),
-    largeLayoutActions: (_, _) => [_addButton()],
+    largeLayoutActions: (_, _) => [_addButton(context)],
     largeLayoutContent: (order, _) => OrderDetails(order: order),
   );
 }
