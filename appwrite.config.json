@@ -1,0 +1,587 @@
+{
+    "projectId": "68aa2fb0003c6a029b56",
+    "projectName": "Stibu",
+    "settings": {
+        "services": {
+            "account": true,
+            "avatars": true,
+            "databases": true,
+            "locale": true,
+            "health": true,
+            "storage": true,
+            "teams": true,
+            "users": true,
+            "sites": true,
+            "functions": true,
+            "graphql": true,
+            "messaging": true
+        },
+        "auth": {
+            "methods": {
+                "jwt": true,
+                "phone": true,
+                "invites": true,
+                "anonymous": true,
+                "email-otp": true,
+                "magic-url": true,
+                "email-password": true
+            },
+            "security": {
+                "duration": 31536000,
+                "limit": 2,
+                "sessionsLimit": 10,
+                "passwordHistory": 0,
+                "passwordDictionary": false,
+                "personalDataCheck": false,
+                "sessionAlerts": false,
+                "mockNumbers": []
+            }
+        }
+    },
+    "databases": [
+        {
+            "$id": "68aa30fb0002c7296751",
+            "name": "internal",
+            "enabled": true
+        },
+        {
+            "$id": "68aa3101001363c8ad54",
+            "name": "public",
+            "enabled": true
+        },
+        {
+            "$id": "68aa310e0011d41ce5e3",
+            "name": "default",
+            "enabled": true
+        }
+    ],
+    "collections": [
+        {
+            "$id": "68aa31280030c4bf3e0f",
+            "$permissions": [],
+            "databaseId": "68aa30fb0002c7296751",
+            "name": "productKeys",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "productKey",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 128,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "usedId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 128,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "isValid",
+                    "type": "boolean",
+                    "required": true,
+                    "array": false,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "productKey",
+                    "type": "unique",
+                    "status": "available",
+                    "attributes": [
+                        "productKey"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "68aa31c30013def4afe7",
+            "$permissions": [],
+            "databaseId": "68aa3101001363c8ad54",
+            "name": "products",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "suId",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "itemPrice",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "qtyLimit",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "originalItemPrice",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "hasSalePrice",
+                    "type": "boolean",
+                    "required": true,
+                    "array": false,
+                    "default": null
+                },
+                {
+                    "key": "endSaleDate",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false,
+                    "format": "",
+                    "default": null
+                },
+                {
+                    "key": "beginSaleDate",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false,
+                    "format": "",
+                    "default": null
+                },
+                {
+                    "key": "slug",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 1024,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "images",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "title",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 1024,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "description",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 4096,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "inventoryStatus",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": "",
+                    "encrypt": false
+                },
+                {
+                    "key": "culture",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "colors",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "canBePurchased",
+                    "type": "boolean",
+                    "required": true,
+                    "array": false,
+                    "default": null
+                },
+                {
+                    "key": "exclusiveTo",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "categorySlugs",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 1024,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "alternateId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "replacementForItemId",
+                    "type": "integer",
+                    "required": false,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "hoverImage",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 1024,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "metaDescription",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 4096,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "metaTitle",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 1024,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "isCommissionable",
+                    "type": "boolean",
+                    "required": true,
+                    "array": false,
+                    "default": null
+                },
+                {
+                    "key": "excludeFrom",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "languages",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "qualifier",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "lifeCycleStates",
+                    "type": "string",
+                    "required": false,
+                    "array": true,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "offeringType",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "revision",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": -9223372036854775808,
+                    "max": 9223372036854775807,
+                    "default": null
+                },
+                {
+                    "key": "fingerprint",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 256,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "seenAt",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false,
+                    "format": "",
+                    "default": null
+                }
+            ],
+            "indexes": []
+        },
+        {
+            "$id": "68aa343b001159d0db69",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "calendarEventsParticipants",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa34450005b29955c3",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "orderProducts",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa344c000a86cfb5a3",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "expenses",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa3454002c7678b22e",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "coupons",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa345a002dee1da885",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "invoices",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa346100270714b274",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "customProducts",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa34680006a5caf9c9",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "customers",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa346d003bd0774736",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "orderCoupons",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa34730004044f54d6",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "calendarEvents",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa34780004289eddc6",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "orders",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        },
+        {
+            "$id": "68aa347d0026da39ec70",
+            "$permissions": [],
+            "databaseId": "68aa310e0011d41ce5e3",
+            "name": "printTemplates",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [],
+            "indexes": []
+        }
+    ],
+    "functions": [
+        {
+            "$id": "68aa35b6002fc658caac",
+            "execute": [
+                "any"
+            ],
+            "name": "fetchSuProducts",
+            "enabled": true,
+            "logging": true,
+            "runtime": "python-3.12",
+            "scopes": [
+                "documents.read",
+                "documents.write"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 30,
+            "entrypoint": "src/main.py",
+            "commands": "pip install -r requirements.txt",
+            "specification": "s-0.5vcpu-512mb",
+            "path": "functions/fetchSuProducts"
+        },
+        {
+            "$id": "68aa4a800021ae0dd098",
+            "execute": [
+                "any",
+                "guests",
+                "users"
+            ],
+            "name": "Starter function",
+            "enabled": true,
+            "logging": true,
+            "runtime": "python-3.12",
+            "scopes": [
+                "sessions.write",
+                "users.read",
+                "users.write",
+                "teams.read",
+                "teams.write",
+                "databases.read",
+                "databases.write",
+                "collections.read",
+                "collections.write",
+                "attributes.read",
+                "attributes.write",
+                "indexes.read",
+                "indexes.write",
+                "documents.read",
+                "documents.write",
+                "files.read",
+                "files.write",
+                "buckets.read",
+                "buckets.write",
+                "functions.read",
+                "functions.write",
+                "execution.read",
+                "execution.write",
+                "targets.read",
+                "targets.write",
+                "providers.read",
+                "providers.write",
+                "messages.read",
+                "messages.write",
+                "topics.read",
+                "topics.write",
+                "subscribers.read",
+                "subscribers.write",
+                "locale.read",
+                "avatars.read",
+                "health.read",
+                "migrations.read",
+                "migrations.write",
+                "tokens.read",
+                "tokens.write",
+                "sites.read",
+                "sites.write",
+                "log.read",
+                "log.write"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "entrypoint": "src/main.py",
+            "commands": "pip install -r requirements.txt",
+            "specification": "s-0.5vcpu-512mb",
+            "path": "functions/Starter function"
+        }
+    ]
+}

@@ -11,6 +11,7 @@
             "storage": true,
             "teams": true,
             "users": true,
+            "sites": true,
             "functions": true,
             "graphql": true,
             "messaging": true

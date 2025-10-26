@@ -7,7 +7,7 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
-  appwrite: ^16.1.0
+  appwrite: ^20.2.1
   auto_route: ^10.0.1
   bitsdojo_window: ^0.1.6
   collection: ^1.19.1
@@ -29,7 +29,7 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   auto_route_generator: ^10.0.1
   build_runner: ^2.4.15
 
